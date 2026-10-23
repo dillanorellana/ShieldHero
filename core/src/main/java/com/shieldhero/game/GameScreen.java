@@ -151,6 +151,11 @@ public class GameScreen implements Screen {
     	    }
 
     	} else {
+    		
+    		// Actualizar dificultad del modo supervivencia
+    		if (gestorPartida.estaEnSupervivencia()) {
+    		    gestorPartida.actualizarSupervivencia(delta);
+    		}
 
     	    // Actualizar proyectiles y colisiones
     	    boolean partidaActiva = lluvia.actualizarMovimiento(
@@ -177,15 +182,16 @@ public class GameScreen implements Screen {
     	    );
 
     	    // Victoria al completar la quinta ronda
+    	 // Victoria al completar la quinta ronda
     	    if (gestorPartida.hayVictoria()) {
 
     	        int puntosFinales = caballero.getPuntos();
 
+    	        // Conservamos esta pantalla para continuar la partida
     	        game.setScreen(
-    	            new VictoriaScreen(game, puntosFinales)
+    	            new VictoriaScreen(game, this, puntosFinales)
     	        );
 
-    	        dispose();
     	        return;
     	    }
 
@@ -196,7 +202,7 @@ public class GameScreen implements Screen {
     	        lluvia.limpiarProyectiles();
 
     	        // Recompensa: recuperar una vida
-    	        castillo.recuperarVida(1);
+    	        castillo.recuperarVida(4);
     	    }
     	}
 
@@ -234,18 +240,39 @@ public class GameScreen implements Screen {
             650, 470
         );
 
-        font.draw(
-            batch,
-            "Ronda: " + gestorPartida.getRondaActual()
-                + "/" + gestorPartida.getTotalRondas(),
-            310, 440
-        );
+        if (gestorPartida.estaEnSupervivencia()) {
 
-        font.draw(
-            batch,
-            "Objetivo: " + gestorPartida.getObjetivoActual(),
-            310, 410
-        );
+            font.setColor(Color.GOLD);
+
+            font.draw(
+                batch,
+                "MODO SUPERVIVENCIA",
+                290, 440
+            );
+
+            font.setColor(Color.WHITE);
+
+            font.draw(
+                batch,
+                "Tiempo: " + (int) gestorPartida.getTiempoSupervivencia() + " s",
+                310, 410
+            );
+
+        } else {
+
+            font.draw(
+                batch,
+                "Ronda: " + gestorPartida.getRondaActual()
+                    + "/" + gestorPartida.getTotalRondas(),
+                310, 440
+            );
+
+            font.draw(
+                batch,
+                "Objetivo: " + gestorPartida.getObjetivoActual(),
+                310, 410
+            );
+        }
 
      // Barras de Dash y Parry
         dibujarHUDHabilidades();
