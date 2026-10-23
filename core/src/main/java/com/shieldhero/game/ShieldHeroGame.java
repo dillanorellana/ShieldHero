@@ -1,45 +1,57 @@
+
 package com.shieldhero.game;
 
 import com.badlogic.gdx.Game;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 
-	public class ShieldHeroGame extends Game {
+public class ShieldHeroGame extends Game {
 
-		private SpriteBatch batch;
-		private BitmapFont font;
-		private int higherScore;
+    private SpriteBatch batch;
+    private BitmapFont font;
 
-		public void create() {
-			batch = new SpriteBatch();
-			font = new BitmapFont(); // use libGDX's default Arial font
-			this.setScreen(new MainMenuScreen(this));
-		}
+    @Override
+    public void create() {
 
-		public void render() {
-			super.render(); // important!
-		}
+        batch = new SpriteBatch();
+        font = new BitmapFont();
 
-		public void dispose() {
-			batch.dispose();
-			font.dispose();
-		}
+        // Reiniciar las rondas al iniciar el juego
+        GestorPartida.getInstancia().reiniciarRondas();
 
-		public SpriteBatch getBatch() {
-			return batch;
-		}
+        setScreen(new MainMenuScreen(this));
+    }
 
-		public BitmapFont getFont() {
-			return font;
-		}
+    @Override
+    public void render() {
+        super.render();
+    }
 
-		public int getHigherScore() {
-			return higherScore;
-		}
+    @Override
+    public void dispose() {
 
-		public void setHigherScore(int higherScore) {
-			this.higherScore = higherScore;
-		}
-		
+        if (getScreen() != null) {
+            getScreen().dispose();
+        }
 
-	}
+        batch.dispose();
+        font.dispose();
+    }
+
+    public SpriteBatch getBatch() {
+        return batch;
+    }
+
+    public BitmapFont getFont() {
+        return font;
+    }
+
+    // El record ahora pertenece al Singleton
+    public int getHigherScore() {
+        return GestorPartida.getInstancia().getRecord();
+    }
+
+    public void setHigherScore(int puntos) {
+        GestorPartida.getInstancia().actualizarRecord(puntos);
+    }
+}

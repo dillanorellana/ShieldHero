@@ -23,21 +23,25 @@ public class GameScreen implements Screen {
     private Castillo castillo;
     private Lluvia lluvia;
 
-    public GameScreen(final ShieldHeroGame game) {
-        this.game = game;
+    private GestorPartida gestorPartida;
 
-        // Recursos compartidos del juego
+    public GameScreen(final ShieldHeroGame game) {
+
+        this.game = game;
         batch = game.getBatch();
         font = game.getFont();
 
-        // Camara
+        // Obtener la unica instancia del gestor
+        gestorPartida = GestorPartida.getInstancia();
+
+        // Cada nueva partida comienza en la ronda 1
+        gestorPartida.reiniciarRondas();
+
         camera = new OrthographicCamera();
         camera.setToOrtho(false, 800, 480);
 
-        // Castillo con 5 vidas
         castillo = new Castillo();
 
-        // Caballero
         Texture texturaCaballero = new Texture(
             Gdx.files.internal("bucket.png")
         );
@@ -53,7 +57,6 @@ public class GameScreen implements Screen {
 
         caballero.crear();
 
-        // Texturas provisionales de los proyectiles
         Texture texturaFlecha = new Texture(
             Gdx.files.internal("drop.png")
         );
@@ -66,17 +69,14 @@ public class GameScreen implements Screen {
             Gdx.files.internal("drop.png")
         );
 
-        // Sonido de bloqueo
         Sound sonidoBloqueo = Gdx.audio.newSound(
             Gdx.files.internal("drop.wav")
         );
 
-        // Musica de fondo
         Music musica = Gdx.audio.newMusic(
             Gdx.files.internal("rain.mp3")
         );
 
-        // Sistema de proyectiles
         lluvia = new Lluvia(
             texturaFlecha,
             texturaPiedra,
@@ -91,35 +91,29 @@ public class GameScreen implements Screen {
     @Override
     public void render(float delta) {
 
-        // 1. Actualizar movimiento del caballero
         caballero.actualizarMovimiento();
 
-        // 2. Actualizar proyectiles y colisiones
         boolean partidaActiva = lluvia.actualizarMovimiento(
             caballero,
             castillo
         );
 
-        // 3. Actualizar record de puntuacion
-        if (caballero.getPuntos() > game.getHigherScore()) {
-            game.setHigherScore(caballero.getPuntos());
-        }
+        // Actualizar el record mediante Singleton
+        gestorPartida.actualizarRecord(
+            caballero.getPuntos()
+        );
 
-        // 4. Comprobar derrota
         if (!partidaActiva || castillo.estaDestruido()) {
             game.setScreen(new GameOverScreen(game));
             dispose();
             return;
         }
 
-        // 5. Limpiar pantalla
         ScreenUtils.clear(0, 0, 0.2f, 1);
 
-        // 6. Actualizar camara
         camera.update();
         batch.setProjectionMatrix(camera.combined);
 
-        // 7. Dibujar partida
         batch.begin();
 
         font.draw(
@@ -130,7 +124,7 @@ public class GameScreen implements Screen {
 
         font.draw(
             batch,
-            "Record: " + game.getHigherScore(),
+            "Record: " + gestorPartida.getRecord(),
             310, 470
         );
 
@@ -141,7 +135,12 @@ public class GameScreen implements Screen {
             650, 470
         );
 
-        // Dibujar personaje y ataques
+        font.draw(
+            batch,
+            "Ronda: " + gestorPartida.getRondaActual(),
+            310, 440
+        );
+
         caballero.dibujar(batch);
         lluvia.actualizarDibujoLluvia(batch);
 
