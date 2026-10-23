@@ -33,11 +33,30 @@ public class Lluvia {
     }
 
     public void crear() {
+
         proyectiles = new Array<Proyectil>();
         crearProyectil();
 
         musica.setLooping(true);
         musica.play();
+    }
+
+    private float obtenerIntervaloAparicion() {
+
+        int ronda = GestorPartida.getInstancia().getRondaActual();
+
+        switch (ronda) {
+            case 1:
+                return 1.2f;
+            case 2:
+                return 1.0f;
+            case 3:
+                return 0.85f;
+            case 4:
+                return 0.7f;
+            default:
+                return 0.6f;
+        }
     }
 
     private void crearProyectil() {
@@ -49,6 +68,7 @@ public class Lluvia {
         Proyectil nuevo;
 
         switch (tipo) {
+
             case 1:
                 nuevo = new Flecha(x, y, texturaFlecha);
                 break;
@@ -62,6 +82,25 @@ public class Lluvia {
                 break;
         }
 
+        // Patron Strategy
+        int ronda = GestorPartida.getInstancia().getRondaActual();
+
+        if (ronda == 5 && MathUtils.randomBoolean(0.25f)) {
+
+            float direccion =
+                MathUtils.randomBoolean() ? 1f : -1f;
+
+            nuevo.setEstrategiaMovimiento(
+                new MovimientoDiagonal(direccion)
+            );
+
+        } else {
+
+            nuevo.setEstrategiaMovimiento(
+                new MovimientoVertical()
+            );
+        }
+
         proyectiles.add(nuevo);
         ultimoProyectil = TimeUtils.nanoTime();
     }
@@ -69,7 +108,11 @@ public class Lluvia {
     public boolean actualizarMovimiento(Caballero caballero,
                                          Castillo castillo) {
 
-        if (TimeUtils.nanoTime() - ultimoProyectil > 800000000L) {
+        float intervalo = obtenerIntervaloAparicion();
+
+        long intervaloNanos = (long) (intervalo * 1000000000L);
+
+        if (TimeUtils.nanoTime() - ultimoProyectil > intervaloNanos) {
             crearProyectil();
         }
 
@@ -78,23 +121,24 @@ public class Lluvia {
         for (int i = 0; i < proyectiles.size; i++) {
 
             Proyectil proyectil = proyectiles.get(i);
+
             proyectil.actualizar(delta);
 
-            // Bloqueo utilizando la interfaz
             if (proyectil.colisionaCon(caballero.getArea())) {
 
                 if (proyectil instanceof Bloqueable) {
+
                     Bloqueable bloqueable = (Bloqueable) proyectil;
                     bloqueable.alSerBloqueado(caballero);
                 }
 
                 sonidoBloqueo.play();
+
                 proyectiles.removeIndex(i);
                 i--;
                 continue;
             }
 
-            // Daño al castillo
             if (proyectil.llegoAlSuelo()) {
 
                 castillo.recibirDaño(proyectil.getDaño());
@@ -108,6 +152,7 @@ public class Lluvia {
     }
 
     public void actualizarDibujoLluvia(SpriteBatch batch) {
+
         for (Proyectil proyectil : proyectiles) {
             proyectil.dibujar(batch);
         }
@@ -122,9 +167,11 @@ public class Lluvia {
     }
 
     public void destruir() {
+
         texturaFlecha.dispose();
         texturaPiedra.dispose();
         texturaFuego.dispose();
+
         sonidoBloqueo.dispose();
         musica.dispose();
     }

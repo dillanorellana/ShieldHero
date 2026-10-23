@@ -12,6 +12,9 @@ public abstract class Proyectil {
     private float velocidad;
     private int daño;
 
+    // Patron Strategy
+    private EstrategiaMovimiento estrategiaMovimiento;
+
     public Proyectil(float x, float y, Texture textura,
                      float velocidad, int daño) {
 
@@ -19,10 +22,24 @@ public abstract class Proyectil {
         this.textura = textura;
         this.velocidad = velocidad;
         this.daño = daño;
+
+        // Estrategia inicial: caida vertical
+        this.estrategiaMovimiento = new MovimientoVertical();
     }
 
     public void actualizar(float delta) {
-        area.y -= velocidad * delta;
+
+        // Delegar el movimiento a la estrategia
+        estrategiaMovimiento.mover(area, velocidad, delta);
+    }
+
+    // Permite cambiar el comportamiento en ejecucion
+    public void setEstrategiaMovimiento(
+            EstrategiaMovimiento nuevaEstrategia) {
+
+        if (nuevaEstrategia != null) {
+            this.estrategiaMovimiento = nuevaEstrategia;
+        }
     }
 
     public void dibujar(SpriteBatch batch) {
