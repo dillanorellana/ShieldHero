@@ -16,6 +16,13 @@ public class Castillo {
         }
     }
 
+    // Recuperar vida sin superar el maximo del castillo
+    public void recuperarVida(int cantidad) {
+        if (cantidad > 0 && !estaDestruido()) {
+            vidas = Math.min(vidasMaximas, vidas + cantidad);
+        }
+    }
+
     public boolean estaDestruido() {
         return vidas <= 0;
     }

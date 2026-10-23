@@ -14,6 +14,9 @@ public class Lluvia {
     private Array<Proyectil> proyectiles;
     private long ultimoProyectil;
 
+    // Posicion horizontal del ultimo proyectil generado
+    private float ultimaPosicionX = -1f;
+
     private Texture texturaFlecha;
     private Texture texturaPiedra;
     private Texture texturaFuego;
@@ -21,8 +24,12 @@ public class Lluvia {
     private Sound sonidoBloqueo;
     private Music musica;
 
-    public Lluvia(Texture flecha, Texture piedra,
-                  Texture fuego, Sound sonido, Music musica) {
+    public Lluvia(
+            Texture flecha,
+            Texture piedra,
+            Texture fuego,
+            Sound sonido,
+            Music musica) {
 
         this.texturaFlecha = flecha;
         this.texturaPiedra = piedra;
@@ -34,50 +41,169 @@ public class Lluvia {
     public void crear() {
 
         proyectiles = new Array<Proyectil>();
+
+        ultimaPosicionX = -1f;
+
         crearProyectil();
 
         musica.setLooping(true);
         musica.play();
     }
 
-    // GM-9: La dificultad se obtiene de la ronda
-    // configurada mediante el patron Builder.
+    // Obtener el intervalo de aparicion de la ronda actual
     private float obtenerIntervaloAparicion() {
 
         return GestorPartida.getInstancia()
                 .getIntervaloAparicionActual();
     }
 
+    // Calcular una posicion horizontal segun la dificultad
+    private float calcularPosicionX(
+            ConfiguracionRonda configuracion) {
+
+        float anchoEscenario = 800f;
+        float anchoProyectil = 64f;
+
+        float limiteDerecho =
+            anchoEscenario - anchoProyectil;
+
+        // Primer proyectil: posicion completamente aleatoria
+        if (ultimaPosicionX < 0f) {
+
+            ultimaPosicionX = MathUtils.random(
+                0f,
+                limiteDerecho
+            );
+
+            return ultimaPosicionX;
+        }
+
+        // Distancia maxima definida por el Builder
+        float distancia =
+            configuracion.getDistanciaMaxima();
+
+        // Calcular los limites respecto al ultimo proyectil
+        float minimo = Math.max(
+            0f,
+            ultimaPosicionX - distancia
+        );
+
+        float maximo = Math.min(
+            limiteDerecho,
+            ultimaPosicionX + distancia
+        );
+
+        // Elegir una posicion dentro del rango permitido
+        float nuevaPosicion = MathUtils.random(
+            minimo,
+            maximo
+        );
+
+        ultimaPosicionX = nuevaPosicion;
+
+        return nuevaPosicion;
+    }
+    private int seleccionarTipoProyectil(int ronda) {
+
+        // Numero aleatorio entre 0 y 99
+        int probabilidad = MathUtils.random(0, 99);
+
+        switch (ronda) {
+
+            case 1:
+                // 100% flechas
+                return 1;
+
+            case 2:
+                // 65% flechas, 35% piedras
+                return probabilidad < 65 ? 1 : 2;
+
+            case 3:
+                // 45% flechas, 35% piedras, 20% fuego
+                if (probabilidad < 45) {
+                    return 1;
+                } else if (probabilidad < 80) {
+                    return 2;
+                }
+                return 3;
+
+            case 4:
+                // 35% flechas, 35% piedras, 30% fuego
+                if (probabilidad < 35) {
+                    return 1;
+                } else if (probabilidad < 70) {
+                    return 2;
+                }
+                return 3;
+
+            case 5:
+                // 30% flechas, 35% piedras, 35% fuego
+                if (probabilidad < 30) {
+                    return 1;
+                } else if (probabilidad < 65) {
+                    return 2;
+                }
+                return 3;
+
+            default:
+                return 1;
+        }
+    }
+
+    // Generar proyectiles segun la configuracion de la ronda
     private void crearProyectil() {
 
-        float x = MathUtils.random(0, 800 - 64);
-        float y = 480;
+        ConfiguracionRonda configuracion =
+            GestorPartida.getInstancia()
+                .getConfiguracionActual();
 
-        int tipo = MathUtils.random(1, 3);
+        // Posicion de aparicion controlada
+        float x = calcularPosicionX(configuracion);
+        float y = 480f;
+
+        // Tipos disponibles segun la ronda
+        int tipo = seleccionarTipoProyectil(
+        	    configuracion.getNumero()
+        	);
+
         Proyectil nuevo;
 
         switch (tipo) {
 
             case 1:
-                nuevo = new Flecha(x, y, texturaFlecha);
+                nuevo = new Flecha(
+                    x,
+                    y,
+                    texturaFlecha
+                );
                 break;
 
             case 2:
-                nuevo = new Piedra(x, y, texturaPiedra);
+                nuevo = new Piedra(
+                    x,
+                    y,
+                    texturaPiedra
+                );
                 break;
 
             default:
-                nuevo = new BolaFuego(x, y, texturaFuego);
+                nuevo = new BolaFuego(
+                    x,
+                    y,
+                    texturaFuego
+                );
                 break;
         }
 
-        // GM-7: Strategy
-        int ronda = GestorPartida.getInstancia().getRondaActual();
+        // Patron Strategy: movimiento segun la ronda
+        float probabilidadDiagonal =
+            configuracion.getProbabilidadDiagonal();
 
-        if (ronda == 5 && MathUtils.randomBoolean(0.25f)) {
+        if (MathUtils.randomBoolean(probabilidadDiagonal)) {
 
-            float direccion =
-                    MathUtils.randomBoolean() ? 1f : -1f;
+            float direccion = MathUtils.randomBoolean()
+                ? 1f
+                : -1f;
 
             nuevo.setEstrategiaMovimiento(
                 new MovimientoDiagonal(direccion)
@@ -90,19 +216,27 @@ public class Lluvia {
             );
         }
 
+        // Agregar el proyectil
         proyectiles.add(nuevo);
+
+        // Registrar el momento de aparicion
         ultimoProyectil = TimeUtils.nanoTime();
     }
 
-    public boolean actualizarMovimiento(Caballero caballero,
-                                         Castillo castillo) {
+    // Actualizar proyectiles, movimientos y colisiones
+    public boolean actualizarMovimiento(
+            Caballero caballero,
+            Castillo castillo) {
 
-        // Intervalo definido por ConfiguracionRonda.Builder
         float intervalo = obtenerIntervaloAparicion();
 
-        long intervaloNanos = (long) (intervalo * 1000000000L);
+        long intervaloNanos =
+            (long) (intervalo * 1000000000L);
 
-        if (TimeUtils.nanoTime() - ultimoProyectil > intervaloNanos) {
+        // Generar proyectil cuando corresponda
+        if (TimeUtils.nanoTime() - ultimoProyectil
+                > intervaloNanos) {
+
             crearProyectil();
         }
 
@@ -112,7 +246,7 @@ public class Lluvia {
 
             Proyectil proyectil = proyectiles.get(i);
 
-            // GM-8: Template Method
+            // Patron Template Method
             boolean eliminar = proyectil.procesar(
                 delta,
                 caballero,
@@ -121,7 +255,7 @@ public class Lluvia {
 
             if (eliminar) {
 
-                // Reproducir sonido solamente al bloquear.
+                // Sonido solamente al bloquear
                 if (proyectil.colisionaCon(caballero.getArea())) {
                     sonidoBloqueo.play();
                 }
@@ -134,11 +268,30 @@ public class Lluvia {
         return !castillo.estaDestruido();
     }
 
+    // Dibujar todos los proyectiles
     public void actualizarDibujoLluvia(SpriteBatch batch) {
 
         for (Proyectil proyectil : proyectiles) {
             proyectil.dibujar(batch);
         }
+    }
+
+    // Eliminar proyectiles al superar una ronda
+    public void limpiarProyectiles() {
+
+        if (proyectiles != null) {
+            proyectiles.clear();
+        }
+    }
+
+    // Reiniciar la aparicion al comenzar una nueva ronda
+    public void reiniciarTiempoAparicion() {
+
+        ultimoProyectil = TimeUtils.nanoTime();
+
+        // La nueva ronda empieza sin restricciones
+        // respecto a la posicion de la ronda anterior
+        ultimaPosicionX = -1f;
     }
 
     public void pausar() {

@@ -2,49 +2,74 @@ package com.shieldhero.game;
 
 public class GestorPartida {
 
-    // GM-6: Patron Singleton
+    // Patron Singleton
     private static final GestorPartida instancia =
-            new GestorPartida();
+        new GestorPartida();
 
-    // GM-9: Configuraciones creadas con Builder
+    private static final float DURACION_DESCANSO = 4f;
+
     private final ConfiguracionRonda[] rondas;
 
     private int record;
     private int rondaActual;
+
     private boolean victoria;
+    private boolean enDescanso;
+
+    private float tiempoDescanso;
 
     private GestorPartida() {
 
         rondas = new ConfiguracionRonda[] {
 
+            // RONDA 1: Solo flechas
             new ConfiguracionRonda.Builder()
                 .numero(1)
-                .puntosObjetivo(100)
-                .intervaloAparicion(1.2f)
+                .puntosObjetivo(200)
+                .intervaloAparicion(1.20f)
+                .tiposProyectiles(1)
+                .probabilidadDiagonal(0f)
+                .distanciaMaxima(250f)
                 .construir(),
 
+            // RONDA 2: Flechas y piedras
             new ConfiguracionRonda.Builder()
                 .numero(2)
-                .puntosObjetivo(250)
-                .intervaloAparicion(1.0f)
+                .puntosObjetivo(500)
+                .intervaloAparicion(1.10f)
+                .tiposProyectiles(2)
+                .probabilidadDiagonal(0f)
+                .distanciaMaxima(350f)
                 .construir(),
 
+            // RONDA 3: Aparecen las bolas de fuego
             new ConfiguracionRonda.Builder()
                 .numero(3)
-                .puntosObjetivo(450)
-                .intervaloAparicion(0.85f)
+                .puntosObjetivo(900)
+                .intervaloAparicion(1.00f)
+                .tiposProyectiles(3)
+                .probabilidadDiagonal(0f)
+                .distanciaMaxima(450f)
                 .construir(),
 
+            // RONDA 4: Primeros ataques diagonales
             new ConfiguracionRonda.Builder()
                 .numero(4)
-                .puntosObjetivo(700)
-                .intervaloAparicion(0.7f)
+                .puntosObjetivo(1400)
+                .intervaloAparicion(0.90f)
+                .tiposProyectiles(3)
+                .probabilidadDiagonal(0.10f)
+                .distanciaMaxima(550f)
                 .construir(),
 
+            // RONDA 5: Asedio final
             new ConfiguracionRonda.Builder()
                 .numero(5)
-                .puntosObjetivo(1000)
-                .intervaloAparicion(0.6f)
+                .puntosObjetivo(2000)
+                .intervaloAparicion(0.80f)
+                .tiposProyectiles(3)
+                .probabilidadDiagonal(0.20f)
+                .distanciaMaxima(736f)
                 .construir()
         };
 
@@ -56,37 +81,61 @@ public class GestorPartida {
         return instancia;
     }
 
-    public int getRecord() {
-        return record;
-    }
-
     public void actualizarRecord(int puntos) {
         if (puntos > record) {
             record = puntos;
         }
     }
 
-    // Avanzar de ronda al alcanzar la puntuacion requerida
+    // Comprobar si el jugador supero la ronda
     public void actualizar(int puntos) {
 
-        if (victoria) {
+        if (victoria || enDescanso) {
             return;
         }
 
-        while (!victoria &&
-               puntos >= getConfiguracionActual().getPuntosObjetivo()) {
+        if (puntos >= getObjetivoActual()) {
 
-            if (rondaActual < rondas.length) {
-                rondaActual++;
-            } else {
+            if (rondaActual == rondas.length) {
                 victoria = true;
+            } else {
+                iniciarDescanso();
             }
+        }
+    }
+
+    private void iniciarDescanso() {
+        enDescanso = true;
+        tiempoDescanso = DURACION_DESCANSO;
+    }
+
+    // Actualizar la cuenta regresiva del descanso
+    public void actualizarDescanso(float delta) {
+
+        if (!enDescanso) {
+            return;
+        }
+
+        tiempoDescanso -= delta;
+
+        if (tiempoDescanso <= 0f) {
+
+            tiempoDescanso = 0f;
+            enDescanso = false;
+
+            rondaActual++;
         }
     }
 
     public void reiniciarRondas() {
         rondaActual = 1;
         victoria = false;
+        enDescanso = false;
+        tiempoDescanso = 0f;
+    }
+
+    public int getRecord() {
+        return record;
     }
 
     public int getRondaActual() {
@@ -115,5 +164,21 @@ public class GestorPartida {
 
     public boolean hayVictoria() {
         return victoria;
+    }
+
+    public boolean estaEnDescanso() {
+        return enDescanso;
+    }
+
+    public int getTiempoDescanso() {
+        return (int) Math.ceil(tiempoDescanso);
+    }
+
+    public int getRondaSuperada() {
+        return rondaActual;
+    }
+
+    public int getSiguienteRonda() {
+        return Math.min(rondaActual + 1, rondas.length);
     }
 }

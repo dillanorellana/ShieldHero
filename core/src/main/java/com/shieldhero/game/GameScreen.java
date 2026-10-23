@@ -136,36 +136,69 @@ public class GameScreen implements Screen {
     @Override
     public void render(float delta) {
 
-        caballero.actualizarMovimiento();
+    	// El caballero puede moverse incluso durante el descanso
+    	caballero.actualizarMovimiento();
 
-        boolean partidaActiva = lluvia.actualizarMovimiento(
-            caballero,
-            castillo
-        );
+    	// Si estamos descansando, no procesamos proyectiles
+    	if (gestorPartida.estaEnDescanso()) {
 
-        gestorPartida.actualizarRecord(caballero.getPuntos());
-        gestorPartida.actualizar(caballero.getPuntos());
+    	    gestorPartida.actualizarDescanso(delta);
 
-        // Victoria
-        if (gestorPartida.hayVictoria()) {
+    	    // Si termino el descanso, reiniciar el tiempo
+    	    // de aparicion para la nueva ronda
+    	    if (!gestorPartida.estaEnDescanso()) {
+    	        lluvia.reiniciarTiempoAparicion();
+    	    }
 
-            int puntosFinales = caballero.getPuntos();
+    	} else {
 
-            game.setScreen(
-                new VictoriaScreen(game, puntosFinales)
-            );
+    	    // Actualizar proyectiles y colisiones
+    	    boolean partidaActiva = lluvia.actualizarMovimiento(
+    	        caballero,
+    	        castillo
+    	    );
 
-            dispose();
-            return;
-        }
+    	    // Actualizar record
+    	    gestorPartida.actualizarRecord(
+    	        caballero.getPuntos()
+    	    );
 
-        // Derrota
-        if (!partidaActiva || castillo.estaDestruido()) {
+    	    // Comprobar derrota antes de otorgar recompensas
+    	    if (!partidaActiva || castillo.estaDestruido()) {
 
-            game.setScreen(new GameOverScreen(game));
-            dispose();
-            return;
-        }
+    	        game.setScreen(new GameOverScreen(game));
+    	        dispose();
+    	        return;
+    	    }
+
+    	    // Comprobar progreso de ronda
+    	    gestorPartida.actualizar(
+    	        caballero.getPuntos()
+    	    );
+
+    	    // Victoria al completar la quinta ronda
+    	    if (gestorPartida.hayVictoria()) {
+
+    	        int puntosFinales = caballero.getPuntos();
+
+    	        game.setScreen(
+    	            new VictoriaScreen(game, puntosFinales)
+    	        );
+
+    	        dispose();
+    	        return;
+    	    }
+
+    	    // Si acabamos de superar una ronda
+    	    if (gestorPartida.estaEnDescanso()) {
+
+    	        // Retirar los ataques que quedaban en pantalla
+    	        lluvia.limpiarProyectiles();
+
+    	        // Recompensa: recuperar una vida
+    	        castillo.recuperarVida(1);
+    	    }
+    	}
 
         ScreenUtils.clear(0, 0, 0.2f, 1);
 
@@ -214,10 +247,68 @@ public class GameScreen implements Screen {
             310, 410
         );
 
-        // Barras de Dash y Parry
+     // Barras de Dash y Parry
         dibujarHUDHabilidades();
 
+        // Mensaje durante el descanso
+        if (gestorPartida.estaEnDescanso()) {
+            dibujarDescanso();
+        }
+
         batch.end();
+    }
+    
+    private void dibujarDescanso() {
+
+        // Fondo oscuro semitransparente
+        batch.setColor(0f, 0f, 0f, 0.75f);
+
+        batch.draw(
+            texturaBarra,
+            0, 145,
+            800, 190
+        );
+
+        batch.setColor(Color.WHITE);
+
+        // Guardar escala original del HUD
+        float escalaX = font.getData().scaleX;
+        float escalaY = font.getData().scaleY;
+
+        font.getData().setScale(1.8f);
+
+        font.draw(
+            batch,
+            "RONDA " + gestorPartida.getRondaSuperada()
+                + " SUPERADA!",
+            210, 295
+        );
+
+        font.getData().setScale(1.1f);
+
+        font.draw(
+            batch,
+            "Castillo: +1 vida",
+            305, 255
+        );
+
+        font.draw(
+            batch,
+            "Siguiente ronda: "
+                + gestorPartida.getSiguienteRonda(),
+            285, 220
+        );
+
+        font.draw(
+            batch,
+            "Comienza en "
+                + gestorPartida.getTiempoDescanso()
+                + "...",
+            320, 185
+        );
+
+        // Restaurar escala original
+        font.getData().setScale(escalaX, escalaY);
     }
 
     private void dibujarHUDHabilidades() {
