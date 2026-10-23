@@ -32,9 +32,9 @@ public class MainMenuScreen implements Screen {
 
 		batch.begin();
 		font.getData().setScale(2, 2);
-		font.draw(batch, "Bienvenido a Recolecta Gotas!!! ", 100, camera.viewportHeight/2+50);
-		font.draw(batch, "Toca en cualquier lugar para comenzar!", 100, camera.viewportHeight/2-50);
-
+		font.draw(batch, "SHIELD HERO", 230, 300);
+		font.draw(batch, "CASTLE DEFENSE", 200, 240);
+		font.draw(batch, "Haz clic para comenzar", 190, 150);
 		batch.end();
 
 		if (Gdx.input.isTouched()) {

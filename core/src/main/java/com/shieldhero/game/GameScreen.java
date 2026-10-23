@@ -15,7 +15,7 @@ public class GameScreen implements Screen {
     private OrthographicCamera camera;
 	private SpriteBatch batch;	   
 	private BitmapFont font;
-	private Tarro tarro;
+	private Caballero tarro;
 	private Lluvia lluvia;
 
 	   
@@ -27,7 +27,7 @@ public class GameScreen implements Screen {
         this.font = game.getFont();
 		  // load the images for the droplet and the bucket, 64x64 pixels each 	     
 		  Sound hurtSound = Gdx.audio.newSound(Gdx.files.internal("hurt.ogg"));
-		  tarro = new Tarro(new Texture(Gdx.files.internal("bucket.png")),hurtSound);
+		  tarro = new Caballero(new Texture(Gdx.files.internal("bucket.png")),hurtSound);
          
 	      // load the drop sound effect and the rain background "music" 
          Texture gota = new Texture(Gdx.files.internal("drop.png"));
@@ -38,12 +38,12 @@ public class GameScreen implements Screen {
 	     Music rainMusic = Gdx.audio.newMusic(Gdx.files.internal("rain.mp3"));
          lluvia = new Lluvia(gota, gotaMala, dropSound, rainMusic);
 	      
-	      // camera
-	      camera = new OrthographicCamera();
-	      camera.setToOrtho(false, 800, 480);
-	      batch = new SpriteBatch();
-	      // creacion del tarro
-	      tarro.crear();
+      // camera
+         camera = new OrthographicCamera();
+         camera.setToOrtho(false, 800, 480);
+
+         // creacion del tarro
+         tarro.crear();
 	      
 	      // creacion de la lluvia
 	      lluvia.crear();
