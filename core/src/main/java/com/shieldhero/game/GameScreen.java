@@ -19,21 +19,26 @@ public class GameScreen implements Screen {
     private SpriteBatch batch;
     private BitmapFont font;
 
-    private Caballero tarro;
-    private Lluvia lluvia;
+    private Caballero caballero;
     private Castillo castillo;
+    private Lluvia lluvia;
 
     public GameScreen(final ShieldHeroGame game) {
         this.game = game;
 
+        // Recursos compartidos del juego
         batch = game.getBatch();
         font = game.getFont();
 
-        // Crear el castillo con 5 vidas
+        // Camara
+        camera = new OrthographicCamera();
+        camera.setToOrtho(false, 800, 480);
+
+        // Castillo con 5 vidas
         castillo = new Castillo();
 
-        // Crear el caballero
-        Texture imagenCaballero = new Texture(
+        // Caballero
+        Texture texturaCaballero = new Texture(
             Gdx.files.internal("bucket.png")
         );
 
@@ -41,95 +46,103 @@ public class GameScreen implements Screen {
             Gdx.files.internal("hurt.ogg")
         );
 
-        tarro = new Caballero(imagenCaballero, sonidoHerido);
+        caballero = new Caballero(
+            texturaCaballero,
+            sonidoHerido
+        );
 
-        // Crear los objetos que caen
-        Texture gota = new Texture(
+        caballero.crear();
+
+        // Texturas provisionales de los proyectiles
+        Texture texturaFlecha = new Texture(
             Gdx.files.internal("drop.png")
         );
 
-        Texture gotaMala = new Texture(
+        Texture texturaPiedra = new Texture(
             Gdx.files.internal("dropBad.png")
         );
 
-        Sound sonidoGota = Gdx.audio.newSound(
+        Texture texturaFuego = new Texture(
+            Gdx.files.internal("drop.png")
+        );
+
+        // Sonido de bloqueo
+        Sound sonidoBloqueo = Gdx.audio.newSound(
             Gdx.files.internal("drop.wav")
         );
 
+        // Musica de fondo
         Music musica = Gdx.audio.newMusic(
             Gdx.files.internal("rain.mp3")
         );
 
+        // Sistema de proyectiles
         lluvia = new Lluvia(
-            gota,
-            gotaMala,
-            sonidoGota,
+            texturaFlecha,
+            texturaPiedra,
+            texturaFuego,
+            sonidoBloqueo,
             musica
         );
 
-        // Configurar camara
-        camera = new OrthographicCamera();
-        camera.setToOrtho(false, 800, 480);
-
-        // Inicializar objetos
-        tarro.crear();
         lluvia.crear();
     }
 
     @Override
     public void render(float delta) {
 
-        // Actualizar la partida
-        if (!tarro.estaHerido()) {
-            tarro.actualizarMovimiento();
+        // 1. Actualizar movimiento del caballero
+        caballero.actualizarMovimiento();
 
-            boolean caballeroSigueVivo =
-                lluvia.actualizarMovimiento(tarro, castillo);
+        // 2. Actualizar proyectiles y colisiones
+        boolean partidaActiva = lluvia.actualizarMovimiento(
+            caballero,
+            castillo
+        );
 
-            // Actualizar record
-            if (tarro.getPuntos() > game.getHigherScore()) {
-                game.setHigherScore(tarro.getPuntos());
-            }
-
-            // Comprobar derrota
-            if (!caballeroSigueVivo || castillo.estaDestruido()) {
-                game.setScreen(new GameOverScreen(game));
-                dispose();
-                return;
-            }
+        // 3. Actualizar record de puntuacion
+        if (caballero.getPuntos() > game.getHigherScore()) {
+            game.setHigherScore(caballero.getPuntos());
         }
 
-        // Limpiar pantalla
+        // 4. Comprobar derrota
+        if (!partidaActiva || castillo.estaDestruido()) {
+            game.setScreen(new GameOverScreen(game));
+            dispose();
+            return;
+        }
+
+        // 5. Limpiar pantalla
         ScreenUtils.clear(0, 0, 0.2f, 1);
 
-        // Actualizar camara
+        // 6. Actualizar camara
         camera.update();
         batch.setProjectionMatrix(camera.combined);
 
-        // Dibujar partida
+        // 7. Dibujar partida
         batch.begin();
 
-        font.draw(batch,
-            "Puntos: " + tarro.getPuntos(),
-            5, 475
+        font.draw(
+            batch,
+            "Puntos: " + caballero.getPuntos(),
+            10, 470
         );
 
-        font.draw(batch,
+        font.draw(
+            batch,
             "Record: " + game.getHigherScore(),
-            330, 475
+            310, 470
         );
 
-        font.draw(batch,
-            "Caballero: " + tarro.getVidas(),
-            660, 475
+        font.draw(
+            batch,
+            "Castillo: " + castillo.getVidas() + "/"
+                + castillo.getVidasMaximas(),
+            650, 470
         );
 
-        font.draw(batch,
-            "Castillo: " + castillo.getVidas(),
-            660, 445
-        );
-
-        tarro.dibujar(batch);
+        // Dibujar personaje y ataques
+        caballero.dibujar(batch);
         lluvia.actualizarDibujoLluvia(batch);
 
         batch.end();
@@ -147,10 +160,6 @@ public class GameScreen implements Screen {
     }
 
     @Override
-    public void resize(int width, int height) {
-    }
-
-    @Override
     public void resume() {
     }
 
@@ -159,8 +168,12 @@ public class GameScreen implements Screen {
     }
 
     @Override
+    public void resize(int width, int height) {
+    }
+
+    @Override
     public void dispose() {
-        tarro.destruir();
+        caballero.destruir();
         lluvia.destruir();
     }
 }

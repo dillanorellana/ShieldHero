@@ -7,102 +7,100 @@ import com.badlogic.gdx.audio.Sound;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.math.MathUtils;
-import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.TimeUtils;
 
 public class Lluvia {
 
-    private Array<Rectangle> rainDropsPos;
-    private Array<Integer> rainDropsType;
+    private Array<Proyectil> proyectiles;
+    private long ultimoProyectil;
 
-    private long lastDropTime;
+    private Texture texturaFlecha;
+    private Texture texturaPiedra;
+    private Texture texturaFuego;
 
-    private Texture gotaBuena;
-    private Texture gotaMala;
+    private Sound sonidoBloqueo;
+    private Music musica;
 
-    private Sound dropSound;
-    private Music rainMusic;
+    public Lluvia(Texture flecha, Texture piedra,
+                  Texture fuego, Sound sonido, Music musica) {
 
-    public Lluvia(Texture gotaBuena, Texture gotaMala,
-                  Sound ss, Music mm) {
-
-        this.gotaBuena = gotaBuena;
-        this.gotaMala = gotaMala;
-        this.dropSound = ss;
-        this.rainMusic = mm;
+        this.texturaFlecha = flecha;
+        this.texturaPiedra = piedra;
+        this.texturaFuego = fuego;
+        this.sonidoBloqueo = sonido;
+        this.musica = musica;
     }
 
     public void crear() {
+        proyectiles = new Array<Proyectil>();
+        crearProyectil();
 
-        rainDropsPos = new Array<Rectangle>();
-        rainDropsType = new Array<Integer>();
-
-        crearGotaDeLluvia();
-
-        rainMusic.setLooping(true);
-        rainMusic.play();
+        musica.setLooping(true);
+        musica.play();
     }
 
-    private void crearGotaDeLluvia() {
+    private void crearProyectil() {
 
-        Rectangle proyectil = new Rectangle();
+        float x = MathUtils.random(0, 800 - 64);
+        float y = 480;
 
-        proyectil.x = MathUtils.random(0, 800 - 64);
-        proyectil.y = 480;
-        proyectil.width = 64;
-        proyectil.height = 64;
+        int tipo = MathUtils.random(1, 3);
+        Proyectil nuevo;
 
-        rainDropsPos.add(proyectil);
+        switch (tipo) {
+            case 1:
+                nuevo = new Flecha(x, y, texturaFlecha);
+                break;
 
-        // Tipos provisionales de ataques
-        if (MathUtils.randomBoolean()) {
-            rainDropsType.add(1);
-        } else {
-            rainDropsType.add(2);
+            case 2:
+                nuevo = new Piedra(x, y, texturaPiedra);
+                break;
+
+            default:
+                nuevo = new BolaFuego(x, y, texturaFuego);
+                break;
         }
 
-        lastDropTime = TimeUtils.nanoTime();
+        proyectiles.add(nuevo);
+        ultimoProyectil = TimeUtils.nanoTime();
     }
 
     public boolean actualizarMovimiento(Caballero caballero,
                                          Castillo castillo) {
 
-        // Generar nuevos proyectiles
-        if (TimeUtils.nanoTime() - lastDropTime > 300000000L) {
-            crearGotaDeLluvia();
+        if (TimeUtils.nanoTime() - ultimoProyectil > 800000000L) {
+            crearProyectil();
         }
 
-        for (int i = 0; i < rainDropsPos.size; i++) {
+        float delta = Gdx.graphics.getDeltaTime();
 
-            Rectangle proyectil = rainDropsPos.get(i);
+        for (int i = 0; i < proyectiles.size; i++) {
 
-            // Movimiento hacia abajo
-            proyectil.y -= 300 * Gdx.graphics.getDeltaTime();
+            Proyectil proyectil = proyectiles.get(i);
+            proyectil.actualizar(delta);
 
-            // El caballero bloquea el proyectil
-            if (proyectil.overlaps(caballero.getArea())) {
+            // Bloqueo utilizando la interfaz
+            if (proyectil.colisionaCon(caballero.getArea())) {
 
-                caballero.sumarPuntos(10);
-                dropSound.play();
+                if (proyectil instanceof Bloqueable) {
+                    Bloqueable bloqueable = (Bloqueable) proyectil;
+                    bloqueable.alSerBloqueado(caballero);
+                }
 
-                rainDropsPos.removeIndex(i);
-                rainDropsType.removeIndex(i);
-
+                sonidoBloqueo.play();
+                proyectiles.removeIndex(i);
                 i--;
                 continue;
             }
 
-            // El proyectil llega al castillo
-            if (proyectil.y + proyectil.height < 0) {
+            // Daño al castillo
+            if (proyectil.llegoAlSuelo()) {
 
-                castillo.recibirDaño(1);
+                castillo.recibirDaño(proyectil.getDaño());
 
-                rainDropsPos.removeIndex(i);
-                rainDropsType.removeIndex(i);
-
+                proyectiles.removeIndex(i);
                 i--;
-                continue;
             }
         }
 
@@ -110,31 +108,24 @@ public class Lluvia {
     }
 
     public void actualizarDibujoLluvia(SpriteBatch batch) {
-
-        for (int i = 0; i < rainDropsPos.size; i++) {
-
-            Rectangle proyectil = rainDropsPos.get(i);
-
-            if (rainDropsType.get(i) == 1) {
-                batch.draw(gotaMala, proyectil.x, proyectil.y);
-            } else {
-                batch.draw(gotaBuena, proyectil.x, proyectil.y);
-            }
+        for (Proyectil proyectil : proyectiles) {
+            proyectil.dibujar(batch);
         }
     }
 
     public void pausar() {
-        rainMusic.stop();
+        musica.pause();
     }
 
     public void continuar() {
-        rainMusic.play();
+        musica.play();
     }
 
     public void destruir() {
-        gotaBuena.dispose();
-        gotaMala.dispose();
-        dropSound.dispose();
-        rainMusic.dispose();
+        texturaFlecha.dispose();
+        texturaPiedra.dispose();
+        texturaFuego.dispose();
+        sonidoBloqueo.dispose();
+        musica.dispose();
     }
 }
