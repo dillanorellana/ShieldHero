@@ -1,4 +1,3 @@
-
 package com.shieldhero.game;
 
 import com.badlogic.gdx.Gdx;
@@ -19,6 +18,8 @@ public class GameScreen implements Screen {
     private SpriteBatch batch;
     private BitmapFont font;
 
+    private Texture texturaFondo;
+
     private Caballero caballero;
     private Castillo castillo;
     private Lluvia lluvia;
@@ -32,19 +33,23 @@ public class GameScreen implements Screen {
         batch = game.getBatch();
         font = game.getFont();
 
-        // Singleton
         gestorPartida = GestorPartida.getInstancia();
         gestorPartida.reiniciarRondas();
 
         camera = new OrthographicCamera();
         camera.setToOrtho(false, 800, 480);
 
+        // Escenario medieval
+        texturaFondo = new Texture(
+            Gdx.files.internal("escenarios/fondo.png")
+        );
+
         // Castillo
         castillo = new Castillo();
 
         // Caballero
         Texture texturaCaballero = new Texture(
-            Gdx.files.internal("bucket.png")
+            Gdx.files.internal("personajes/caballero.png")
         );
 
         Sound sonidoHerido = Gdx.audio.newSound(
@@ -58,17 +63,17 @@ public class GameScreen implements Screen {
 
         caballero.crear();
 
-        // Proyectiles
+        // Proyectiles medievales
         Texture texturaFlecha = new Texture(
-            Gdx.files.internal("drop.png")
+            Gdx.files.internal("proyectiles/flecha.png")
         );
 
         Texture texturaPiedra = new Texture(
-            Gdx.files.internal("dropBad.png")
+            Gdx.files.internal("proyectiles/piedra.png")
         );
 
         Texture texturaFuego = new Texture(
-            Gdx.files.internal("drop.png")
+            Gdx.files.internal("proyectiles/bolafuego.png")
         );
 
         Sound sonidoBloqueo = Gdx.audio.newSound(
@@ -93,26 +98,16 @@ public class GameScreen implements Screen {
     @Override
     public void render(float delta) {
 
-        // Movimiento del caballero
         caballero.actualizarMovimiento();
 
-        // Actualizar proyectiles y colisiones
         boolean partidaActiva = lluvia.actualizarMovimiento(
             caballero,
             castillo
         );
 
-        // Actualizar record
-        gestorPartida.actualizarRecord(
-            caballero.getPuntos()
-        );
+        gestorPartida.actualizarRecord(caballero.getPuntos());
+        gestorPartida.actualizar(caballero.getPuntos());
 
-        // Avanzar rondas segun la puntuacion
-        gestorPartida.actualizar(
-            caballero.getPuntos()
-        );
-        
-     // Comprobar victoria al superar la ronda 5
         if (gestorPartida.hayVictoria()) {
 
             int puntosFinales = caballero.getPuntos();
@@ -125,7 +120,6 @@ public class GameScreen implements Screen {
             return;
         }
 
-        // Derrota
         if (!partidaActiva || castillo.estaDestruido()) {
             game.setScreen(new GameOverScreen(game));
             dispose();
@@ -139,6 +133,14 @@ public class GameScreen implements Screen {
 
         batch.begin();
 
+        // El fondo debe dibujarse primero
+        batch.draw(texturaFondo, 0, 0, 800, 480);
+
+        // Personaje y ataques sobre el fondo
+        caballero.dibujar(batch);
+        lluvia.actualizarDibujoLluvia(batch);
+
+        // Interfaz sobre todos los elementos
         font.draw(
             batch,
             "Puntos: " + caballero.getPuntos(),
@@ -171,9 +173,6 @@ public class GameScreen implements Screen {
             310, 410
         );
 
-        caballero.dibujar(batch);
-        lluvia.actualizarDibujoLluvia(batch);
-
         batch.end();
     }
 
@@ -202,6 +201,9 @@ public class GameScreen implements Screen {
 
     @Override
     public void dispose() {
+
+        texturaFondo.dispose();
+
         caballero.destruir();
         lluvia.destruir();
     }
