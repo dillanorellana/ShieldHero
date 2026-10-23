@@ -15,7 +15,7 @@ public class BolaFuego extends Proyectil implements Bloqueable {
 
     @Override
     public void alSerBloqueado(Caballero caballero) {
-        caballero.sumarPuntos(getPuntosBloqueo());
+        caballero.sumarPuntosBloqueo(getPuntosBloqueo());
     }
 
     // Template Method: accion cuando se bloquea

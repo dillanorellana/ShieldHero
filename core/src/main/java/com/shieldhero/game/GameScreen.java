@@ -1,13 +1,18 @@
 package com.shieldhero.game;
 
+import java.util.Locale;
+
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.audio.Music;
 import com.badlogic.gdx.audio.Sound;
+import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.OrthographicCamera;
+import com.badlogic.gdx.graphics.Pixmap;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.utils.ScreenUtils;
 
 public class GameScreen implements Screen {
@@ -17,14 +22,25 @@ public class GameScreen implements Screen {
     private OrthographicCamera camera;
     private SpriteBatch batch;
     private BitmapFont font;
+    private BitmapFont fontHabilidades;
 
     private Texture texturaFondo;
+    private Texture texturaBarra;
 
     private Caballero caballero;
     private Castillo castillo;
     private Lluvia lluvia;
 
     private GestorPartida gestorPartida;
+
+    private static final Color COLOR_DASH =
+        new Color(0.22f, 0.74f, 0.97f, 1f);
+
+    private static final Color COLOR_PARRY =
+        new Color(1f, 0.75f, 0.18f, 1f);
+
+    private static final Color COLOR_FONDO_BARRA =
+        new Color(0.18f, 0.22f, 0.28f, 1f);
 
     public GameScreen(final ShieldHeroGame game) {
 
@@ -33,25 +49,41 @@ public class GameScreen implements Screen {
         batch = game.getBatch();
         font = game.getFont();
 
+        // Fuente pequeña para las habilidades
+        fontHabilidades = new BitmapFont();
+        fontHabilidades.getData().setScale(0.75f);
+
         gestorPartida = GestorPartida.getInstancia();
         gestorPartida.reiniciarRondas();
 
         camera = new OrthographicCamera();
         camera.setToOrtho(false, 800, 480);
 
-        // Escenario medieval
+        // Fondo medieval
         texturaFondo = new Texture(
             Gdx.files.internal("escenarios/fondo.png")
         );
 
+        // Textura para las barras de recarga
+        Pixmap pixmap = new Pixmap(
+            1, 1, Pixmap.Format.RGBA8888
+        );
+
+        pixmap.setColor(Color.WHITE);
+        pixmap.fill();
+
+        texturaBarra = new Texture(pixmap);
+        pixmap.dispose();
+
         // Castillo
         castillo = new Castillo();
 
-        // Caballero
+        // Sprite normal del caballero
         Texture texturaCaballero = new Texture(
             Gdx.files.internal("personajes/caballero.png")
         );
 
+        // Sonido del caballero
         Sound sonidoHerido = Gdx.audio.newSound(
             Gdx.files.internal("hurt.ogg")
         );
@@ -61,6 +93,12 @@ public class GameScreen implements Screen {
             sonidoHerido
         );
 
+        // NUEVO: sprite del Parry
+        Texture texturaParry = new Texture(
+            Gdx.files.internal("personajes/caballero_parry.png")
+        );
+
+        caballero.setImagenParry(texturaParry);
         caballero.crear();
 
         // Proyectiles medievales
@@ -108,6 +146,7 @@ public class GameScreen implements Screen {
         gestorPartida.actualizarRecord(caballero.getPuntos());
         gestorPartida.actualizar(caballero.getPuntos());
 
+        // Victoria
         if (gestorPartida.hayVictoria()) {
 
             int puntosFinales = caballero.getPuntos();
@@ -120,7 +159,9 @@ public class GameScreen implements Screen {
             return;
         }
 
+        // Derrota
         if (!partidaActiva || castillo.estaDestruido()) {
+
             game.setScreen(new GameOverScreen(game));
             dispose();
             return;
@@ -133,14 +174,14 @@ public class GameScreen implements Screen {
 
         batch.begin();
 
-        // El fondo debe dibujarse primero
+        // Fondo primero
         batch.draw(texturaFondo, 0, 0, 800, 480);
 
-        // Personaje y ataques sobre el fondo
+        // Personaje y ataques
         caballero.dibujar(batch);
         lluvia.actualizarDibujoLluvia(batch);
 
-        // Interfaz sobre todos los elementos
+        // HUD principal
         font.draw(
             batch,
             "Puntos: " + caballero.getPuntos(),
@@ -173,7 +214,106 @@ public class GameScreen implements Screen {
             310, 410
         );
 
+        // Barras de Dash y Parry
+        dibujarHUDHabilidades();
+
         batch.end();
+    }
+
+    private void dibujarHUDHabilidades() {
+
+        // Barra azul de Dash
+        dibujarBarraHabilidad(
+            "DASH [SHIFT]",
+            10, 425,
+            caballero.getTiempoRecargaDash(),
+            1.5f,
+            COLOR_DASH
+        );
+
+        // Barra dorada de Parry
+        dibujarBarraHabilidad(
+            "PARRY [ESPACIO]",
+            10, 385,
+            caballero.getTiempoRecargaParry(),
+            1.0f,
+            COLOR_PARRY
+        );
+    }
+
+    private void dibujarBarraHabilidad(
+            String nombre,
+            float x,
+            float y,
+            float recargaRestante,
+            float recargaMaxima,
+            Color color) {
+
+        float ancho = 85f;
+        float alto = 6f;
+
+        float progreso = MathUtils.clamp(
+            1f - recargaRestante / recargaMaxima,
+            0f,
+            1f
+        );
+
+        // Nombre pequeño encima de la barra
+        fontHabilidades.setColor(Color.WHITE);
+
+        fontHabilidades.draw(
+            batch,
+            nombre,
+            x,
+            y + 15f
+        );
+
+        // Fondo de la barra
+        batch.setColor(COLOR_FONDO_BARRA);
+
+        batch.draw(
+            texturaBarra,
+            x,
+            y - 7f,
+            ancho,
+            alto
+        );
+
+        // Progreso
+        batch.setColor(color);
+
+        batch.draw(
+            texturaBarra,
+            x,
+            y - 7f,
+            ancho * progreso,
+            alto
+        );
+
+        // Restaurar color
+        batch.setColor(Color.WHITE);
+
+        String estado;
+
+        if (recargaRestante <= 0f) {
+
+            estado = "LISTO";
+
+        } else {
+
+            estado = String.format(
+                Locale.US,
+                "%.1f s",
+                recargaRestante
+            );
+        }
+
+        fontHabilidades.draw(
+            batch,
+            estado,
+            x + ancho + 8f,
+            y + 1f
+        );
     }
 
     @Override
@@ -203,6 +343,8 @@ public class GameScreen implements Screen {
     public void dispose() {
 
         texturaFondo.dispose();
+        texturaBarra.dispose();
+        fontHabilidades.dispose();
 
         caballero.destruir();
         lluvia.destruir();
