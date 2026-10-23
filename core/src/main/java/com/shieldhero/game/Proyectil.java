@@ -1,4 +1,3 @@
-
 package com.shieldhero.game;
 
 import com.badlogic.gdx.graphics.Texture;
@@ -12,7 +11,6 @@ public abstract class Proyectil {
     private float velocidad;
     private int daño;
 
-    // Patron Strategy
     private EstrategiaMovimiento estrategiaMovimiento;
 
     public Proyectil(float x, float y, Texture textura,
@@ -23,17 +21,43 @@ public abstract class Proyectil {
         this.velocidad = velocidad;
         this.daño = daño;
 
-        // Estrategia inicial: caida vertical
         this.estrategiaMovimiento = new MovimientoVertical();
     }
 
-    public void actualizar(float delta) {
+    // GM-8: TEMPLATE METHOD
+    // Define el orden comun del procesamiento.
+    // Devuelve true si el proyectil debe eliminarse.
+    public final boolean procesar(
+            float delta, Caballero caballero, Castillo castillo) {
 
-        // Delegar el movimiento a la estrategia
+        // 1. Mover utilizando Strategy
+        actualizar(delta);
+
+        // 2. Comprobar si el caballero lo bloqueo
+        if (colisionaCon(caballero.getArea())) {
+            alBloquear(caballero);
+            return true;
+        }
+
+        // 3. Comprobar si impacto el castillo
+        if (llegoAlSuelo()) {
+            alImpactar(castillo);
+            return true;
+        }
+
+        // El proyectil continua en pantalla
+        return false;
+    }
+
+    public void actualizar(float delta) {
         estrategiaMovimiento.mover(area, velocidad, delta);
     }
 
-    // Permite cambiar el comportamiento en ejecucion
+    // Pasos personalizables por las subclases
+    protected abstract void alBloquear(Caballero caballero);
+
+    protected abstract void alImpactar(Castillo castillo);
+
     public void setEstrategiaMovimiento(
             EstrategiaMovimiento nuevaEstrategia) {
 
@@ -43,8 +67,13 @@ public abstract class Proyectil {
     }
 
     public void dibujar(SpriteBatch batch) {
-        batch.draw(textura, area.x, area.y,
-                   area.width, area.height);
+        batch.draw(
+            textura,
+            area.x,
+            area.y,
+            area.width,
+            area.height
+        );
     }
 
     public boolean colisionaCon(Rectangle otraArea) {

@@ -1,24 +1,53 @@
-
 package com.shieldhero.game;
 
 public class GestorPartida {
 
-    // Patron Singleton
+    // GM-6: Patron Singleton
     private static final GestorPartida instancia =
             new GestorPartida();
 
-    private static final int TOTAL_RONDAS = 5;
-
-    // Puntuacion acumulada necesaria para superar cada ronda
-    private static final int[] OBJETIVOS = {
-        100, 250, 450, 700, 1000
-    };
+    // GM-9: Configuraciones creadas con Builder
+    private final ConfiguracionRonda[] rondas;
 
     private int record;
     private int rondaActual;
     private boolean victoria;
 
     private GestorPartida() {
+
+        rondas = new ConfiguracionRonda[] {
+
+            new ConfiguracionRonda.Builder()
+                .numero(1)
+                .puntosObjetivo(100)
+                .intervaloAparicion(1.2f)
+                .construir(),
+
+            new ConfiguracionRonda.Builder()
+                .numero(2)
+                .puntosObjetivo(250)
+                .intervaloAparicion(1.0f)
+                .construir(),
+
+            new ConfiguracionRonda.Builder()
+                .numero(3)
+                .puntosObjetivo(450)
+                .intervaloAparicion(0.85f)
+                .construir(),
+
+            new ConfiguracionRonda.Builder()
+                .numero(4)
+                .puntosObjetivo(700)
+                .intervaloAparicion(0.7f)
+                .construir(),
+
+            new ConfiguracionRonda.Builder()
+                .numero(5)
+                .puntosObjetivo(1000)
+                .intervaloAparicion(0.6f)
+                .construir()
+        };
+
         record = 0;
         reiniciarRondas();
     }
@@ -37,19 +66,17 @@ public class GestorPartida {
         }
     }
 
-    // Actualizar el progreso segun los puntos del jugador
+    // Avanzar de ronda al alcanzar la puntuacion requerida
     public void actualizar(int puntos) {
 
         if (victoria) {
             return;
         }
 
-        // Permite avanzar varias rondas si se supera
-        // mas de un objetivo de una sola vez
         while (!victoria &&
-               puntos >= OBJETIVOS[rondaActual - 1]) {
+               puntos >= getConfiguracionActual().getPuntosObjetivo()) {
 
-            if (rondaActual < TOTAL_RONDAS) {
+            if (rondaActual < rondas.length) {
                 rondaActual++;
             } else {
                 victoria = true;
@@ -67,15 +94,23 @@ public class GestorPartida {
     }
 
     public int getTotalRondas() {
-        return TOTAL_RONDAS;
+        return rondas.length;
     }
 
     public int getObjetivoActual() {
-        return OBJETIVOS[rondaActual - 1];
+        return getConfiguracionActual().getPuntosObjetivo();
+    }
+
+    public float getIntervaloAparicionActual() {
+        return getConfiguracionActual().getIntervaloAparicion();
     }
 
     public int getPuntosRestantes(int puntos) {
         return Math.max(0, getObjetivoActual() - puntos);
+    }
+
+    public ConfiguracionRonda getConfiguracionActual() {
+        return rondas[rondaActual - 1];
     }
 
     public boolean hayVictoria() {

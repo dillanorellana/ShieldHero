@@ -1,4 +1,3 @@
-
 package com.shieldhero.game;
 
 import com.badlogic.gdx.Gdx;
@@ -41,22 +40,12 @@ public class Lluvia {
         musica.play();
     }
 
+    // GM-9: La dificultad se obtiene de la ronda
+    // configurada mediante el patron Builder.
     private float obtenerIntervaloAparicion() {
 
-        int ronda = GestorPartida.getInstancia().getRondaActual();
-
-        switch (ronda) {
-            case 1:
-                return 1.2f;
-            case 2:
-                return 1.0f;
-            case 3:
-                return 0.85f;
-            case 4:
-                return 0.7f;
-            default:
-                return 0.6f;
-        }
+        return GestorPartida.getInstancia()
+                .getIntervaloAparicionActual();
     }
 
     private void crearProyectil() {
@@ -82,13 +71,13 @@ public class Lluvia {
                 break;
         }
 
-        // Patron Strategy
+        // GM-7: Strategy
         int ronda = GestorPartida.getInstancia().getRondaActual();
 
         if (ronda == 5 && MathUtils.randomBoolean(0.25f)) {
 
             float direccion =
-                MathUtils.randomBoolean() ? 1f : -1f;
+                    MathUtils.randomBoolean() ? 1f : -1f;
 
             nuevo.setEstrategiaMovimiento(
                 new MovimientoDiagonal(direccion)
@@ -108,6 +97,7 @@ public class Lluvia {
     public boolean actualizarMovimiento(Caballero caballero,
                                          Castillo castillo) {
 
+        // Intervalo definido por ConfiguracionRonda.Builder
         float intervalo = obtenerIntervaloAparicion();
 
         long intervaloNanos = (long) (intervalo * 1000000000L);
@@ -122,26 +112,19 @@ public class Lluvia {
 
             Proyectil proyectil = proyectiles.get(i);
 
-            proyectil.actualizar(delta);
+            // GM-8: Template Method
+            boolean eliminar = proyectil.procesar(
+                delta,
+                caballero,
+                castillo
+            );
 
-            if (proyectil.colisionaCon(caballero.getArea())) {
+            if (eliminar) {
 
-                if (proyectil instanceof Bloqueable) {
-
-                    Bloqueable bloqueable = (Bloqueable) proyectil;
-                    bloqueable.alSerBloqueado(caballero);
+                // Reproducir sonido solamente al bloquear.
+                if (proyectil.colisionaCon(caballero.getArea())) {
+                    sonidoBloqueo.play();
                 }
-
-                sonidoBloqueo.play();
-
-                proyectiles.removeIndex(i);
-                i--;
-                continue;
-            }
-
-            if (proyectil.llegoAlSuelo()) {
-
-                castillo.recibirDaño(proyectil.getDaño());
 
                 proyectiles.removeIndex(i);
                 i--;
