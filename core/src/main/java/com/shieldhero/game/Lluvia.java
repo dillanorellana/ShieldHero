@@ -11,10 +11,21 @@ import com.badlogic.gdx.utils.TimeUtils;
 
 public class Lluvia {
 
+    // NUEVO ESCENARIO DE ASEDIO
+    private static final float LIMITE_IZQUIERDO = 30f;
+    private static final float LIMITE_DERECHO = 427f;
+
+    private static final float ANCHO_PROYECTIL = 32f;
+
+    // Margen para mantener los ataques dentro del patio.
+    private static final float MARGEN_SEGURIDAD = 12f;
+
+    private static final float ALTURA_APARICION = 480f;
+
     private Array<Proyectil> proyectiles;
     private long ultimoProyectil;
 
-    // Posicion horizontal del ultimo proyectil generado
+    // Posicion horizontal del ultimo proyectil generado.
     private float ultimaPosicionX = -1f;
 
     private Texture texturaFlecha;
@@ -50,50 +61,51 @@ public class Lluvia {
         musica.play();
     }
 
-    // Obtener el intervalo de aparicion de la ronda actual
+    // Intervalo configurado para la ronda actual.
     private float obtenerIntervaloAparicion() {
 
         return GestorPartida.getInstancia()
                 .getIntervaloAparicionActual();
     }
 
-    // Calcular una posicion horizontal segun la dificultad
+    // Elegir una posicion dentro del patio defendible.
     private float calcularPosicionX(
             ConfiguracionRonda configuracion) {
 
-        float anchoEscenario = 800f;
-        float anchoProyectil = 64f;
+        float minimoPermitido =
+            LIMITE_IZQUIERDO + MARGEN_SEGURIDAD;
 
-        float limiteDerecho =
-            anchoEscenario - anchoProyectil;
+        float maximoPermitido =
+            LIMITE_DERECHO
+            - ANCHO_PROYECTIL
+            - MARGEN_SEGURIDAD;
 
-        // Primer proyectil: posicion completamente aleatoria
+        // Primer proyectil: posicion aleatoria.
         if (ultimaPosicionX < 0f) {
 
             ultimaPosicionX = MathUtils.random(
-                0f,
-                limiteDerecho
+                minimoPermitido,
+                maximoPermitido
             );
 
             return ultimaPosicionX;
         }
 
-        // Distancia maxima definida por el Builder
+        // Distancia maxima definida por Builder.
         float distancia =
             configuracion.getDistanciaMaxima();
 
-        // Calcular los limites respecto al ultimo proyectil
         float minimo = Math.max(
-            0f,
+            minimoPermitido,
             ultimaPosicionX - distancia
         );
 
         float maximo = Math.min(
-            limiteDerecho,
+            maximoPermitido,
             ultimaPosicionX + distancia
         );
 
-        // Elegir una posicion dentro del rango permitido
+        // Elegir dentro del rango alcanzable.
         float nuevaPosicion = MathUtils.random(
             minimo,
             maximo
@@ -103,23 +115,24 @@ public class Lluvia {
 
         return nuevaPosicion;
     }
+
+    // Seleccionar proyectil segun la ronda.
     private int seleccionarTipoProyectil(int ronda) {
 
-        // Numero aleatorio entre 0 y 99
         int probabilidad = MathUtils.random(0, 99);
 
         switch (ronda) {
 
             case 1:
-                // 100% flechas
+                // 100% flechas.
                 return 1;
 
             case 2:
-                // 65% flechas, 35% piedras
+                // 65% flechas, 35% piedras.
                 return probabilidad < 65 ? 1 : 2;
 
             case 3:
-                // 45% flechas, 35% piedras, 20% fuego
+                // 45% flechas, 35% piedras, 20% fuego.
                 if (probabilidad < 45) {
                     return 1;
                 } else if (probabilidad < 80) {
@@ -128,7 +141,7 @@ public class Lluvia {
                 return 3;
 
             case 4:
-                // 35% flechas, 35% piedras, 30% fuego
+                // 35% flechas, 35% piedras, 30% fuego.
                 if (probabilidad < 35) {
                     return 1;
                 } else if (probabilidad < 70) {
@@ -137,34 +150,30 @@ public class Lluvia {
                 return 3;
 
             case 5:
-                // 30% flechas, 35% piedras, 35% fuego
+            default:
+                // 30% flechas, 35% piedras, 35% fuego.
                 if (probabilidad < 30) {
                     return 1;
                 } else if (probabilidad < 65) {
                     return 2;
                 }
                 return 3;
-
-            default:
-                return 1;
         }
     }
 
-    // Generar proyectiles segun la configuracion de la ronda
+    // Generar proyectiles segun la ronda.
     private void crearProyectil() {
 
         ConfiguracionRonda configuracion =
             GestorPartida.getInstancia()
                 .getConfiguracionActual();
 
-        // Posicion de aparicion controlada
         float x = calcularPosicionX(configuracion);
-        float y = 480f;
+        float y = ALTURA_APARICION;
 
-        // Tipos disponibles segun la ronda
         int tipo = seleccionarTipoProyectil(
-        	    configuracion.getNumero()
-        	);
+            configuracion.getNumero()
+        );
 
         Proyectil nuevo;
 
@@ -195,15 +204,30 @@ public class Lluvia {
                 break;
         }
 
-        // Patron Strategy: movimiento segun la ronda
+        // STRATEGY: movimiento segun la ronda.
         float probabilidadDiagonal =
             configuracion.getProbabilidadDiagonal();
 
-        if (MathUtils.randomBoolean(probabilidadDiagonal)) {
+        if (MathUtils.randomBoolean(
+                probabilidadDiagonal)) {
 
-            float direccion = MathUtils.randomBoolean()
-                ? 1f
-                : -1f;
+            // Seleccionar direccion considerando
+            // el espacio disponible en el patio.
+            float centro =
+                (LIMITE_IZQUIERDO + LIMITE_DERECHO) / 2f;
+
+            float direccion;
+
+            if (x < centro) {
+
+                // Desde la izquierda, dirigir hacia el centro.
+                direccion = 1f;
+
+            } else {
+
+                // Desde la derecha, dirigir hacia el centro.
+                direccion = -1f;
+            }
 
             nuevo.setEstrategiaMovimiento(
                 new MovimientoDiagonal(direccion)
@@ -216,14 +240,12 @@ public class Lluvia {
             );
         }
 
-        // Agregar el proyectil
         proyectiles.add(nuevo);
 
-        // Registrar el momento de aparicion
         ultimoProyectil = TimeUtils.nanoTime();
     }
 
-    // Actualizar proyectiles, movimientos y colisiones
+    // Actualizar proyectiles y colisiones.
     public boolean actualizarMovimiento(
             Caballero caballero,
             Castillo castillo) {
@@ -233,7 +255,6 @@ public class Lluvia {
         long intervaloNanos =
             (long) (intervalo * 1000000000L);
 
-        // Generar proyectil cuando corresponda
         if (TimeUtils.nanoTime() - ultimoProyectil
                 > intervaloNanos) {
 
@@ -246,7 +267,7 @@ public class Lluvia {
 
             Proyectil proyectil = proyectiles.get(i);
 
-            // Patron Template Method
+            // TEMPLATE METHOD.
             boolean eliminar = proyectil.procesar(
                 delta,
                 caballero,
@@ -255,8 +276,10 @@ public class Lluvia {
 
             if (eliminar) {
 
-                // Sonido solamente al bloquear
-                if (proyectil.colisionaCon(caballero.getArea())) {
+                // Sonido solo al bloquear.
+                if (proyectil.colisionaCon(
+                        caballero.getArea())) {
+
                     sonidoBloqueo.play();
                 }
 
@@ -268,15 +291,16 @@ public class Lluvia {
         return !castillo.estaDestruido();
     }
 
-    // Dibujar todos los proyectiles
-    public void actualizarDibujoLluvia(SpriteBatch batch) {
+    // Dibujar proyectiles.
+    public void actualizarDibujoLluvia(
+            SpriteBatch batch) {
 
         for (Proyectil proyectil : proyectiles) {
             proyectil.dibujar(batch);
         }
     }
 
-    // Eliminar proyectiles al superar una ronda
+    // Limpiar proyectiles durante descansos.
     public void limpiarProyectiles() {
 
         if (proyectiles != null) {
@@ -284,13 +308,11 @@ public class Lluvia {
         }
     }
 
-    // Reiniciar la aparicion al comenzar una nueva ronda
+    // Reiniciar tiempo al comenzar otra ronda.
     public void reiniciarTiempoAparicion() {
 
         ultimoProyectil = TimeUtils.nanoTime();
 
-        // La nueva ronda empieza sin restricciones
-        // respecto a la posicion de la ronda anterior
         ultimaPosicionX = -1f;
     }
 

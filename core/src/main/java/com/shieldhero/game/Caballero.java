@@ -10,6 +10,20 @@ import com.badlogic.gdx.math.Rectangle;
 
 public class Caballero {
 
+    // DIMENSIONES DEL NUEVO ESCENARIO
+    private static final float ANCHO_CABALLERO = 32f;
+    private static final float ALTO_CABALLERO = 40f;
+
+    // Posicion del suelo del patio.
+    private static final float SUELO_PATIO = 120f;
+
+    // Limites horizontales del patio defendido.
+    private static final float LIMITE_IZQUIERDO = 30f;
+    private static final float LIMITE_DERECHO = 395f;
+
+    // Posicion inicial del caballero.
+    private static final float POSICION_INICIAL_X = 250f;
+
     private Rectangle bucket;
 
     private Texture bucketImage;
@@ -19,6 +33,8 @@ public class Caballero {
 
     private int vidas = 3;
     private int puntos = 0;
+
+    // Velocidad de movimiento normal.
     private int velx = 400;
 
     private boolean herido = false;
@@ -46,7 +62,7 @@ public class Caballero {
         sonidoHerido = ss;
     }
 
-    // Asignar el sprite del caballero levantando el escudo
+    // Asignar sprite del parry.
     public void setImagenParry(Texture imagenParry) {
         this.imagenParry = imagenParry;
     }
@@ -54,7 +70,14 @@ public class Caballero {
     public void crear() {
 
         bucket = new Rectangle();
-        bucket.set(368, 20, 64, 64);
+
+        // Posicion y dimensiones del nuevo escenario.
+        bucket.set(
+            POSICION_INICIAL_X,
+            SUELO_PATIO,
+            ANCHO_CABALLERO,
+            ALTO_CABALLERO
+        );
 
         tiempoDash = 0f;
         tiempoRecargaDash = 0f;
@@ -62,13 +85,19 @@ public class Caballero {
 
         tiempoParry = 0f;
         tiempoRecargaParry = 0f;
+
+        herido = false;
+        tiempoHerido = 0;
+
+        vidas = 3;
+        puntos = 0;
     }
 
     public void actualizarMovimiento() {
 
         float delta = Gdx.graphics.getDeltaTime();
 
-        // Actualizar tiempos de recarga
+        // Actualizar tiempos de recarga.
         tiempoRecargaDash = Math.max(
             0f,
             tiempoRecargaDash - delta
@@ -79,7 +108,7 @@ public class Caballero {
             tiempoRecargaParry - delta
         );
 
-        // PARRY: barra espaciadora
+        // PARRY: barra espaciadora.
         if (Gdx.input.isKeyJustPressed(Input.Keys.SPACE)
                 && tiempoRecargaParry <= 0f
                 && tiempoParry <= 0f) {
@@ -95,7 +124,7 @@ public class Caballero {
             );
         }
 
-        // Movimiento izquierda/derecha
+        // Movimiento izquierda/derecha.
         boolean izquierda =
             Gdx.input.isKeyPressed(Input.Keys.A)
             || Gdx.input.isKeyPressed(Input.Keys.LEFT);
@@ -107,12 +136,15 @@ public class Caballero {
         int direccion = 0;
 
         if (izquierda && !derecha) {
+
             direccion = -1;
+
         } else if (derecha && !izquierda) {
+
             direccion = 1;
         }
 
-        // DASH: Shift + direccion
+        // DASH: Shift + direccion.
         boolean pulsarShift =
             Gdx.input.isKeyJustPressed(Input.Keys.SHIFT_LEFT)
             || Gdx.input.isKeyJustPressed(Input.Keys.SHIFT_RIGHT);
@@ -127,7 +159,7 @@ public class Caballero {
             tiempoRecargaDash = RECARGA_DASH;
         }
 
-        // Ejecutar Dash o movimiento normal
+        // Ejecutar dash o movimiento normal.
         if (tiempoDash > 0f) {
 
             float tiempoAplicado = Math.min(
@@ -152,55 +184,49 @@ public class Caballero {
             bucket.x += direccion * velx * delta;
         }
 
-        // Limites de pantalla
+        // Limitar desplazamiento al patio.
+        // Se aplica tambien al dash.
         bucket.x = MathUtils.clamp(
             bucket.x,
-            0f,
-            800f - bucket.width
+            LIMITE_IZQUIERDO,
+            LIMITE_DERECHO - bucket.width
         );
+
+        // Mantener al caballero sobre el suelo.
+        bucket.y = SUELO_PATIO;
     }
 
     public void dibujar(SpriteBatch batch) {
 
-        if (estaEnParry()) {
+        // Elegir la textura segun el estado.
+        Texture texturaActual = bucketImage;
 
-            // Durante el Parry aparece el escudo levantado
-            Texture texturaActual =
-                imagenParry != null ? imagenParry : bucketImage;
+        if (estaEnParry() && imagenParry != null) {
+            texturaActual = imagenParry;
+        }
 
-            batch.draw(
-                texturaActual,
-                bucket.x,
-                bucket.y,
-                bucket.width,
-                bucket.height
-            );
+        float desplazamientoY = 0f;
 
-        } else if (herido) {
+        // Efecto visual de daño.
+        if (herido) {
 
-            batch.draw(
-                bucketImage,
-                bucket.x,
-                bucket.y + MathUtils.random(-5, 5)
-            );
+            desplazamientoY = MathUtils.random(-3f, 3f);
 
             tiempoHerido--;
 
             if (tiempoHerido <= 0) {
                 herido = false;
             }
-
-        } else {
-
-            // Postura normal
-            batch.draw(
-                bucketImage,
-                bucket.x,
-                bucket.y,
-                bucket.width,
-                bucket.height
-            );
         }
+
+        // Siempre dibujar con las mismas dimensiones.
+        batch.draw(
+            texturaActual,
+            bucket.x,
+            bucket.y + desplazamientoY,
+            bucket.width,
+            bucket.height
+        );
     }
 
     public void dañar() {
@@ -217,12 +243,15 @@ public class Caballero {
         puntos += pp;
     }
 
-    // Puntos dobles cuando el bloqueo ocurre durante el Parry
+    // Puntos dobles durante el parry.
     public void sumarPuntosBloqueo(int puntosBase) {
 
         if (estaEnParry()) {
+
             sumarPuntos(puntosBase * 2);
+
         } else {
+
             sumarPuntos(puntosBase);
         }
     }

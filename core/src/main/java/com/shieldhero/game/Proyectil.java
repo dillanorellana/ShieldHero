@@ -6,6 +6,12 @@ import com.badlogic.gdx.math.Rectangle;
 
 public abstract class Proyectil {
 
+    // Altura del suelo del nuevo escenario.
+    private static final float ALTURA_SUELO = 120f;
+
+    // Dimension visual y de colision de proyectiles.
+    private static final float TAMANO_PROYECTIL = 32f;
+
     private Rectangle area;
     private Texture textura;
     private float velocidad;
@@ -13,60 +19,88 @@ public abstract class Proyectil {
 
     private EstrategiaMovimiento estrategiaMovimiento;
 
-    public Proyectil(float x, float y, Texture textura,
-                     float velocidad, int daño) {
+    public Proyectil(
+            float x,
+            float y,
+            Texture textura,
+            float velocidad,
+            int daño) {
 
-        this.area = new Rectangle(x, y, 64, 64);
+        this.area = new Rectangle(
+            x,
+            y,
+            TAMANO_PROYECTIL,
+            TAMANO_PROYECTIL
+        );
+
         this.textura = textura;
         this.velocidad = velocidad;
         this.daño = daño;
 
-        this.estrategiaMovimiento = new MovimientoVertical();
+        // Movimiento vertical por defecto.
+        this.estrategiaMovimiento =
+            new MovimientoVertical();
     }
 
-    // GM-8: TEMPLATE METHOD
-    // Define el orden comun del procesamiento.
-    // Devuelve true si el proyectil debe eliminarse.
+    // TEMPLATE METHOD
+    // Define el orden de procesamiento de cada proyectil.
+    // Devuelve true cuando debe eliminarse.
     public final boolean procesar(
-            float delta, Caballero caballero, Castillo castillo) {
+            float delta,
+            Caballero caballero,
+            Castillo castillo) {
 
-        // 1. Mover utilizando Strategy
+        // 1. Actualizar posicion con Strategy.
         actualizar(delta);
 
-        // 2. Comprobar si el caballero lo bloqueo
+        // 2. Comprobar bloqueo del caballero.
         if (colisionaCon(caballero.getArea())) {
+
             alBloquear(caballero);
             return true;
         }
 
-        // 3. Comprobar si impacto el castillo
+        // 3. Comprobar impacto en el suelo.
         if (llegoAlSuelo()) {
+
             alImpactar(castillo);
             return true;
         }
 
-        // El proyectil continua en pantalla
+        // 4. El proyectil sigue activo.
         return false;
     }
 
     public void actualizar(float delta) {
-        estrategiaMovimiento.mover(area, velocidad, delta);
+
+        estrategiaMovimiento.mover(
+            area,
+            velocidad,
+            delta
+        );
     }
 
-    // Pasos personalizables por las subclases
-    protected abstract void alBloquear(Caballero caballero);
+    // Metodos personalizables por las subclases.
+    protected abstract void alBloquear(
+        Caballero caballero
+    );
 
-    protected abstract void alImpactar(Castillo castillo);
+    protected abstract void alImpactar(
+        Castillo castillo
+    );
 
     public void setEstrategiaMovimiento(
             EstrategiaMovimiento nuevaEstrategia) {
 
         if (nuevaEstrategia != null) {
-            this.estrategiaMovimiento = nuevaEstrategia;
+
+            this.estrategiaMovimiento =
+                nuevaEstrategia;
         }
     }
 
     public void dibujar(SpriteBatch batch) {
+
         batch.draw(
             textura,
             area.x,
@@ -77,22 +111,28 @@ public abstract class Proyectil {
     }
 
     public boolean colisionaCon(Rectangle otraArea) {
+
         return area.overlaps(otraArea);
     }
 
+    // La parte inferior del proyectil toca el suelo.
     public boolean llegoAlSuelo() {
-        return area.y + area.height < 0;
+
+        return area.y <= ALTURA_SUELO;
     }
 
     public Rectangle getArea() {
+
         return area;
     }
 
     public int getDaño() {
+
         return daño;
     }
 
     public float getVelocidad() {
+
         return velocidad;
     }
 
