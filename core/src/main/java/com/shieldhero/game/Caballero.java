@@ -1,3 +1,4 @@
+
 package com.shieldhero.game;
 
 import com.badlogic.gdx.Gdx;
@@ -10,74 +11,84 @@ import com.badlogic.gdx.math.Rectangle;
 
 public class Caballero {
 
-    // DIMENSIONES DEL NUEVO ESCENARIO
-    private static final float ANCHO_CABALLERO = 32f;
-    private static final float ALTO_CABALLERO = 40f;
-
-    // Posicion del suelo del patio.
-    private static final float SUELO_PATIO = 120f;
-
-    // Limites horizontales del patio defendido.
+    private static final float ANCHO = 32f;
+    private static final float ALTO = 40f;
+    private static final float SUELO = 120f;
     private static final float LIMITE_IZQUIERDO = 30f;
     private static final float LIMITE_DERECHO = 415f;
+    private static final float INICIO_X = 250f;
 
-    // Posicion inicial del caballero.
-    private static final float POSICION_INICIAL_X = 250f;
+    private static final float DURACION_DASH = 0.15f;
+    private static final float DISTANCIA_DASH = 150f;
+
+    private static final float RECARGA_DASH_BASE = 1.5f;
+    private static final float RECARGA_DASH_MINIMA = 0.5f;
+
+    private static final float DURACION_PARRY_BASE = 0.20f;
+    private static final float DURACION_PARRY_MAXIMA = 0.50f;
+
+    private static final float RECARGA_PARRY = 1f;
+    private static final float DURACION_FURIA = 45f;
+
+    private static final float DURACION_LENTITUD = 1.5f;
+    private static final float MULTIPLICADOR_LENTITUD = 0.70f;
 
     private Rectangle bucket;
 
     private Texture bucketImage;
     private Texture imagenParry;
-
     private Sound sonidoHerido;
 
-    private int vidas = 3;
-    private int puntos = 0;
-
-    // Velocidad de movimiento normal.
+    private int vidas;
+    private int puntos;
     private int velx = 400;
 
-    private boolean herido = false;
+    private boolean herido;
     private int tiempoHeridoMax = 50;
     private int tiempoHerido;
 
-    // DASH
-    private static final float DURACION_DASH = 0.15f;
-    private static final float RECARGA_DASH = 1.5f;
-    private static final float DISTANCIA_DASH = 150f;
+    private float tiempoDash;
+    private float tiempoRecargaDash;
+    private int direccionDash;
 
-    private float tiempoDash = 0f;
-    private float tiempoRecargaDash = 0f;
-    private int direccionDash = 0;
+    private float tiempoParry;
+    private float tiempoRecargaParry;
 
-    // PARRY
-    private static final float DURACION_PARRY = 0.20f;
-    private static final float RECARGA_PARRY = 1.0f;
+    private float recargaDashActual;
+    private float duracionParryActual;
 
-    private float tiempoParry = 0f;
-    private float tiempoRecargaParry = 0f;
+    private int nivelesParry;
+    private int nivelesDash;
+
+    private boolean parrySupremo;
+    private boolean dashSupremo;
+
+    private float tiempoFuria;
+    private float tiempoLentitud;
 
     public Caballero(Texture tex, Sound ss) {
         bucketImage = tex;
         sonidoHerido = ss;
     }
 
-    // Asignar sprite del parry.
     public void setImagenParry(Texture imagenParry) {
         this.imagenParry = imagenParry;
     }
 
     public void crear() {
 
-        bucket = new Rectangle();
-
-        // Posicion y dimensiones del nuevo escenario.
-        bucket.set(
-            POSICION_INICIAL_X,
-            SUELO_PATIO,
-            ANCHO_CABALLERO,
-            ALTO_CABALLERO
+        bucket = new Rectangle(
+            INICIO_X,
+            SUELO,
+            ANCHO,
+            ALTO
         );
+
+        vidas = 3;
+        puntos = 0;
+
+        herido = false;
+        tiempoHerido = 0;
 
         tiempoDash = 0f;
         tiempoRecargaDash = 0f;
@@ -86,18 +97,27 @@ public class Caballero {
         tiempoParry = 0f;
         tiempoRecargaParry = 0f;
 
-        herido = false;
-        tiempoHerido = 0;
+        recargaDashActual = RECARGA_DASH_BASE;
+        duracionParryActual = DURACION_PARRY_BASE;
 
-        vidas = 3;
-        puntos = 0;
+        nivelesParry = 0;
+        nivelesDash = 0;
+
+        parrySupremo = false;
+        dashSupremo = false;
+
+        tiempoFuria = 0f;
+        tiempoLentitud = 0f;
     }
+
+    // =====================================
+    // MOVIMIENTO
+    // =====================================
 
     public void actualizarMovimiento() {
 
         float delta = Gdx.graphics.getDeltaTime();
 
-        // Actualizar tiempos de recarga.
         tiempoRecargaDash = Math.max(
             0f,
             tiempoRecargaDash - delta
@@ -108,12 +128,22 @@ public class Caballero {
             tiempoRecargaParry - delta
         );
 
-        // PARRY: barra espaciadora.
+        tiempoFuria = Math.max(
+            0f,
+            tiempoFuria - delta
+        );
+
+        tiempoLentitud = Math.max(
+            0f,
+            tiempoLentitud - delta
+        );
+
+        // PARRY
         if (Gdx.input.isKeyJustPressed(Input.Keys.SPACE)
                 && tiempoRecargaParry <= 0f
                 && tiempoParry <= 0f) {
 
-            tiempoParry = DURACION_PARRY;
+            tiempoParry = duracionParryActual;
             tiempoRecargaParry = RECARGA_PARRY;
 
         } else {
@@ -124,7 +154,7 @@ public class Caballero {
             );
         }
 
-        // Movimiento izquierda/derecha.
+        // DIRECCION
         boolean izquierda =
             Gdx.input.isKeyPressed(Input.Keys.A)
             || Gdx.input.isKeyPressed(Input.Keys.LEFT);
@@ -136,30 +166,30 @@ public class Caballero {
         int direccion = 0;
 
         if (izquierda && !derecha) {
-
             direccion = -1;
 
         } else if (derecha && !izquierda) {
-
             direccion = 1;
         }
 
-        // DASH: Shift + direccion.
-        boolean pulsarShift =
+        // DASH
+        boolean shift =
             Gdx.input.isKeyJustPressed(Input.Keys.SHIFT_LEFT)
             || Gdx.input.isKeyJustPressed(Input.Keys.SHIFT_RIGHT);
 
-        if (pulsarShift
+        if (shift
                 && direccion != 0
                 && tiempoRecargaDash <= 0f
                 && tiempoDash <= 0f) {
 
             direccionDash = direccion;
             tiempoDash = DURACION_DASH;
-            tiempoRecargaDash = RECARGA_DASH;
+            tiempoRecargaDash = recargaDashActual;
         }
 
-        // Ejecutar dash o movimiento normal.
+        float multiplicador = estaRalentizado()
+            ? MULTIPLICADOR_LENTITUD : 1f;
+
         if (tiempoDash > 0f) {
 
             float tiempoAplicado = Math.min(
@@ -172,7 +202,8 @@ public class Caballero {
 
             bucket.x += direccionDash
                 * velocidadDash
-                * tiempoAplicado;
+                * tiempoAplicado
+                * multiplicador;
 
             tiempoDash = Math.max(
                 0f,
@@ -181,37 +212,176 @@ public class Caballero {
 
         } else {
 
-            bucket.x += direccion * velx * delta;
+            bucket.x += direccion
+                * velx
+                * delta
+                * multiplicador;
         }
 
-        // Limitar desplazamiento al patio.
-        // Se aplica tambien al dash.
         bucket.x = MathUtils.clamp(
             bucket.x,
             LIMITE_IZQUIERDO,
             LIMITE_DERECHO - bucket.width
         );
 
-        // Mantener al caballero sobre el suelo.
-        bucket.y = SUELO_PATIO;
+        bucket.y = SUELO;
     }
+
+    // =====================================
+    // RALENTIZACION DEL JEFE
+    // =====================================
+
+    public void aplicarRalentizacion() {
+
+        tiempoLentitud = Math.max(
+            tiempoLentitud,
+            DURACION_LENTITUD
+        );
+
+        System.out.println(
+            "CABALLERO RALENTIZADO POR EL GIGANTE"
+        );
+    }
+
+    public boolean estaRalentizado() {
+        return tiempoLentitud > 0f;
+    }
+
+    public float getTiempoLentitud() {
+        return tiempoLentitud;
+    }
+
+    // =====================================
+    // MEJORAS NORMALES
+    // =====================================
+
+    public void mejorarParry() {
+
+        if (parryAlMaximo()) {
+            return;
+        }
+
+        duracionParryActual = Math.min(
+            DURACION_PARRY_MAXIMA,
+            duracionParryActual + 0.10f
+        );
+
+        nivelesParry++;
+    }
+
+    public void mejorarDash() {
+
+        if (dashAlMaximo()) {
+            return;
+        }
+
+        recargaDashActual = Math.max(
+            RECARGA_DASH_MINIMA,
+            recargaDashActual - 0.25f
+        );
+
+        nivelesDash++;
+
+        tiempoRecargaDash = Math.min(
+            tiempoRecargaDash,
+            recargaDashActual
+        );
+    }
+
+    // =====================================
+    // MEJORAS ESPECIALES
+    // =====================================
+
+    public void activarParrySupremo() {
+
+        parrySupremo = true;
+
+        duracionParryActual = DURACION_PARRY_MAXIMA;
+        nivelesParry = Math.max(nivelesParry, 3);
+    }
+
+    public void activarDashSupremo() {
+
+        dashSupremo = true;
+
+        recargaDashActual = RECARGA_DASH_MINIMA;
+        nivelesDash = Math.max(nivelesDash, 4);
+
+        tiempoRecargaDash = Math.min(
+            tiempoRecargaDash,
+            recargaDashActual
+        );
+    }
+
+    public void activarFuriaPuntos() {
+        tiempoFuria = DURACION_FURIA;
+    }
+
+    public boolean tieneParryMejorado() {
+        return nivelesParry > 0;
+    }
+
+    public boolean tieneDashMejorado() {
+        return nivelesDash > 0;
+    }
+
+    public boolean tieneParrySupremo() {
+        return parrySupremo;
+    }
+
+    public boolean tieneDashSupremo() {
+        return dashSupremo;
+    }
+
+    public boolean tieneFuriaPuntos() {
+        return tiempoFuria > 0f;
+    }
+
+    public boolean parryAlMaximo() {
+        return duracionParryActual >= DURACION_PARRY_MAXIMA;
+    }
+
+    public boolean dashAlMaximo() {
+        return recargaDashActual <= RECARGA_DASH_MINIMA;
+    }
+
+    public int getNivelParry() {
+        return nivelesParry;
+    }
+
+    public int getNivelDash() {
+        return nivelesDash;
+    }
+
+    public float getDuracionParryActual() {
+        return duracionParryActual;
+    }
+
+    public float getRecargaDashActual() {
+        return recargaDashActual;
+    }
+
+    public float getTiempoFuriaPuntos() {
+        return tiempoFuria;
+    }
+
+    // =====================================
+    // DIBUJADO
+    // =====================================
 
     public void dibujar(SpriteBatch batch) {
 
-        // Elegir la textura segun el estado.
-        Texture texturaActual = bucketImage;
+        Texture actual = bucketImage;
 
         if (estaEnParry() && imagenParry != null) {
-            texturaActual = imagenParry;
+            actual = imagenParry;
         }
 
         float desplazamientoY = 0f;
 
-        // Efecto visual de daño.
         if (herido) {
 
             desplazamientoY = MathUtils.random(-3f, 3f);
-
             tiempoHerido--;
 
             if (tiempoHerido <= 0) {
@@ -219,15 +389,18 @@ public class Caballero {
             }
         }
 
-        // Siempre dibujar con las mismas dimensiones.
         batch.draw(
-            texturaActual,
+            actual,
             bucket.x,
             bucket.y + desplazamientoY,
             bucket.width,
             bucket.height
         );
     }
+
+    // =====================================
+    // DANO Y PUNTOS
+    // =====================================
 
     public void dañar() {
 
@@ -239,28 +412,42 @@ public class Caballero {
         sonidoHerido.play();
     }
 
-    public void sumarPuntos(int pp) {
-        puntos += pp;
+    public void recuperarVida(int cantidad) {
+
+        vidas = Math.min(
+            3,
+            vidas + Math.max(0, cantidad)
+        );
     }
 
-    // Puntos dobles durante el parry.
+    public void sumarPuntos(int cantidad) {
+
+        if (tieneFuriaPuntos()) {
+            cantidad *= 2;
+        }
+
+        puntos += cantidad;
+    }
+
     public void sumarPuntosBloqueo(int puntosBase) {
 
         if (estaEnParry()) {
-
             sumarPuntos(puntosBase * 2);
-
         } else {
-
             sumarPuntos(puntosBase);
         }
     }
+
+    // =====================================
+    // CONSULTAS
+    // =====================================
 
     public boolean estaEnParry() {
         return tiempoParry > 0f;
     }
 
     public boolean puedeHacerParry() {
+
         return tiempoParry <= 0f
             && tiempoRecargaParry <= 0f;
     }
@@ -270,6 +457,7 @@ public class Caballero {
     }
 
     public boolean puedeHacerDash() {
+
         return tiempoDash <= 0f
             && tiempoRecargaDash <= 0f;
     }

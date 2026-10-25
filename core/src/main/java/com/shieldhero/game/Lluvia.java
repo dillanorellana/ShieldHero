@@ -28,6 +28,13 @@ public class Lluvia {
     private CanonEnemigo canonEnemigo;
     private VolcanEnemigo volcanEnemigo;
 
+    private GuardianExtra guardianExtra;
+
+    private boolean escudoTemporalActivo;
+    private boolean ralentizacionActiva;
+
+    private static final float FACTOR_RALENTIZACION = 0.50f;
+
     public Lluvia(
             Texture flecha,
             Texture piedra,
@@ -35,11 +42,15 @@ public class Lluvia {
             Sound sonido,
             Music musica) {
 
-        this.texturaFlecha = flecha;
-        this.texturaPiedra = piedra;
-        this.texturaFuego = fuego;
-        this.sonidoBloqueo = sonido;
+        texturaFlecha = flecha;
+        texturaPiedra = piedra;
+        texturaFuego = fuego;
+        sonidoBloqueo = sonido;
         this.musica = musica;
+
+        guardianExtra = null;
+        escudoTemporalActivo = false;
+        ralentizacionActiva = false;
     }
 
     public void crear() {
@@ -57,66 +68,86 @@ public class Lluvia {
             ArqueroEnemigo arquero1,
             ArqueroEnemigo arquero2) {
 
-        this.arqueroEnemigo1 = arquero1;
-        this.arqueroEnemigo2 = arquero2;
+        arqueroEnemigo1 = arquero1;
+        arqueroEnemigo2 = arquero2;
     }
 
-    public void setCanon(CanonEnemigo canonEnemigo) {
-        this.canonEnemigo = canonEnemigo;
+    public void setCanon(CanonEnemigo canon) {
+        canonEnemigo = canon;
     }
 
-    public void setVolcan(VolcanEnemigo volcanEnemigo) {
-        this.volcanEnemigo = volcanEnemigo;
+    public void setVolcan(VolcanEnemigo volcan) {
+        volcanEnemigo = volcan;
+    }
+
+    public void setGuardianExtra(GuardianExtra guardian) {
+        guardianExtra = guardian;
+    }
+
+    // =====================================
+    // HABILIDADES PODEROSAS
+    // =====================================
+
+    public void setEscudoTemporalActivo(boolean activo) {
+        escudoTemporalActivo = activo;
+    }
+
+    public void setRalentizacionActiva(boolean activa) {
+        ralentizacionActiva = activa;
     }
 
     private float obtenerIntervaloAparicion() {
+
         return GestorPartida.getInstancia()
-                .getIntervaloAparicionActual();
+            .getIntervaloAparicionActual();
     }
 
+    // =====================================
+    // POSICION DEL ATAQUE
+    // =====================================
 
-private float calcularPosicionX(
-        ConfiguracionRonda configuracion) {
+    private float calcularPosicionX(
+            ConfiguracionRonda configuracion) {
 
-    // Zona del patio que el caballero puede defender.
-    float minimoPermitido = 42f;
-    float maximoPermitido = 383f;
+        float minimoPermitido = 42f;
+        float maximoPermitido = 383f;
 
-    // Primer ataque de la ronda.
-    if (ultimaPosicionX < 0f) {
+        if (ultimaPosicionX < 0f) {
 
-        ultimaPosicionX = MathUtils.random(
+            ultimaPosicionX = MathUtils.random(
+                minimoPermitido,
+                maximoPermitido
+            );
+
+            return ultimaPosicionX;
+        }
+
+        float distancia =
+            configuracion.getDistanciaMaxima();
+
+        float minimo = Math.max(
             minimoPermitido,
-            maximoPermitido
+            ultimaPosicionX - distancia
         );
 
-        return ultimaPosicionX;
+        float maximo = Math.min(
+            maximoPermitido,
+            ultimaPosicionX + distancia
+        );
+
+        float nuevaPosicion = MathUtils.random(
+            minimo,
+            maximo
+        );
+
+        ultimaPosicionX = nuevaPosicion;
+
+        return nuevaPosicion;
     }
 
-    // Respetar la distancia maxima del Builder.
-    float distancia =
-        configuracion.getDistanciaMaxima();
-
-    float minimo = Math.max(
-        minimoPermitido,
-        ultimaPosicionX - distancia
-    );
-
-    float maximo = Math.min(
-        maximoPermitido,
-        ultimaPosicionX + distancia
-    );
-
-    float nuevaPosicion = MathUtils.random(
-        minimo,
-        maximo
-    );
-
-    ultimaPosicionX = nuevaPosicion;
-
-    return nuevaPosicion;
-}
-
+    // =====================================
+    // PROBABILIDADES ORIGINALES
+    // =====================================
 
     private int seleccionarTipoProyectil(int ronda) {
 
@@ -164,6 +195,10 @@ private float calcularPosicionX(
         }
     }
 
+    // =====================================
+    // CREAR PROYECTIL
+    // =====================================
+
     private void crearProyectil() {
 
         ConfiguracionRonda configuracion =
@@ -174,13 +209,14 @@ private float calcularPosicionX(
             configuracion.getNumero()
         );
 
+        float destinoX = calcularPosicionX(
+            configuracion
+        );
+
         Proyectil nuevo;
 
-        // Punto donde caerá o intentará llegar
-        float destinoX = calcularPosicionX(configuracion);
-
         if (tipo == 1) {
-            // FLECHAS: salen desde uno de los arqueros
+
             ArqueroEnemigo arqueroSeleccionado =
                 MathUtils.randomBoolean()
                     ? arqueroEnemigo1
@@ -191,12 +227,9 @@ private float calcularPosicionX(
 
             if (arqueroSeleccionado != null) {
 
-                // Mantener los puntos de disparo originales.
-                if (arqueroSeleccionado == arqueroEnemigo1) {
-                    origenX = 690f;
-                } else {
-                    origenX = 748f;
-                }
+                origenX =
+                    arqueroSeleccionado == arqueroEnemigo1
+                        ? 690f : 748f;
 
                 origenY = 165f;
 
@@ -219,13 +252,18 @@ private float calcularPosicionX(
             );
 
         } else if (tipo == 2) {
-            // PIEDRAS: salen desde el cañón
+
             float origenX = 620f;
             float origenY = 165f;
 
             if (canonEnemigo != null) {
-                origenX = canonEnemigo.getCentroX() - 18f;
-                origenY = canonEnemigo.getCentroY() + 8f;
+
+                origenX =
+                    canonEnemigo.getCentroX() - 18f;
+
+                origenY =
+                    canonEnemigo.getCentroY() + 8f;
+
                 canonEnemigo.disparar();
             }
 
@@ -245,13 +283,15 @@ private float calcularPosicionX(
             );
 
         } else {
-            // BOLAS DE FUEGO: salen desde el volcán
+
             float origenX = 635f;
             float origenY = 340f;
 
             if (volcanEnemigo != null) {
+
                 origenX = volcanEnemigo.getCraterX();
                 origenY = volcanEnemigo.getCraterY();
+
                 volcanEnemigo.erupcionar();
             }
 
@@ -272,14 +312,20 @@ private float calcularPosicionX(
         }
 
         proyectiles.add(nuevo);
+
         ultimoProyectil = TimeUtils.nanoTime();
     }
+
+    // =====================================
+    // ACTUALIZAR MOVIMIENTO
+    // =====================================
 
     public boolean actualizarMovimiento(
             Caballero caballero,
             Castillo castillo) {
 
         float intervalo = obtenerIntervaloAparicion();
+
         long intervaloNanos =
             (long) (intervalo * 1000000000L);
 
@@ -291,24 +337,46 @@ private float calcularPosicionX(
 
         float delta = Gdx.graphics.getDeltaTime();
 
+        // La ralentizacion reduce la velocidad
+        // de avance del proyectil, no la frecuencia
+        // de aparicion.
+        float deltaMovimiento = ralentizacionActiva
+            ? delta * FACTOR_RALENTIZACION
+            : delta;
+
         for (int i = 0; i < proyectiles.size; i++) {
 
             Proyectil proyectil = proyectiles.get(i);
 
             boolean golpeaCaballeroAntes =
-                proyectil.colisionaCon(caballero.getArea());
+                proyectil.colisionaCon(
+                    caballero.getArea()
+                );
 
             boolean eliminar = proyectil.procesar(
-                delta,
+                deltaMovimiento,
                 caballero,
-                castillo
+                castillo,
+                guardianExtra,
+                escudoTemporalActivo
             );
 
             if (eliminar) {
 
-                if (golpeaCaballeroAntes
+                boolean bloqueoGuardian =
+                    guardianExtra != null
+                    && guardianExtra.estaColocado()
+                    && guardianExtra.protege(
+                        proyectil.getArea()
+                    );
+
+                if (escudoTemporalActivo
+                        || bloqueoGuardian
+                        || golpeaCaballeroAntes
                         || proyectil.colisionaCon(
-                            caballero.getArea())) {
+                            caballero.getArea()
+                        )) {
+
                     sonidoBloqueo.play();
                 }
 
@@ -320,12 +388,21 @@ private float calcularPosicionX(
         return !castillo.estaDestruido();
     }
 
-    public void actualizarDibujoLluvia(SpriteBatch batch) {
+    // =====================================
+    // DIBUJAR PROYECTILES
+    // =====================================
+
+    public void actualizarDibujoLluvia(
+            SpriteBatch batch) {
 
         for (Proyectil proyectil : proyectiles) {
             proyectil.dibujar(batch);
         }
     }
+
+    // =====================================
+    // LIMPIEZA DE ATAQUES
+    // =====================================
 
     public void limpiarProyectiles() {
 
@@ -335,6 +412,7 @@ private float calcularPosicionX(
     }
 
     public void reiniciarTiempoAparicion() {
+
         ultimoProyectil = TimeUtils.nanoTime();
         ultimaPosicionX = -1f;
     }

@@ -24,9 +24,8 @@ public abstract class Proyectil {
             float velocidad,
             int daño) {
 
-        this.area = new Rectangle(
-            x,
-            y,
+        area = new Rectangle(
+            x, y,
             TAMANO_PROYECTIL,
             TAMANO_PROYECTIL
         );
@@ -35,24 +34,85 @@ public abstract class Proyectil {
         this.velocidad = velocidad;
         this.daño = daño;
 
-        this.estrategiaMovimiento =
+        estrategiaMovimiento =
             new MovimientoVertical();
     }
 
-    // TEMPLATE METHOD
+    // =====================================
+    // TEMPLATE METHOD ORIGINAL
+    // =====================================
+
     public final boolean procesar(
             float delta,
             Caballero caballero,
             Castillo castillo) {
 
+        return procesar(
+            delta,
+            caballero,
+            castillo,
+            null,
+            false
+        );
+    }
+
+    // =====================================
+    // VERSION CON GUARDIAN
+    // =====================================
+
+    public final boolean procesar(
+            float delta,
+            Caballero caballero,
+            Castillo castillo,
+            GuardianExtra guardian) {
+
+        return procesar(
+            delta,
+            caballero,
+            castillo,
+            guardian,
+            false
+        );
+    }
+
+    // =====================================
+    // VERSION CON HABILIDADES PODEROSAS
+    // =====================================
+
+    public final boolean procesar(
+            float delta,
+            Caballero caballero,
+            Castillo castillo,
+            GuardianExtra guardian,
+            boolean escudoTemporalActivo) {
+
+        // Mantener el movimiento Strategy original.
         actualizar(delta);
 
+        // Escudo temporal Z:
+        // protege al caballero y al castillo
+        // de los proyectiles normales.
+        if (escudoTemporalActivo) {
+            return true;
+        }
+
+        // Guardia permanente con aura.
+        if (guardian != null
+                && guardian.estaColocado()
+                && guardian.protege(area)) {
+
+            guardian.registrarBloqueo();
+            return true;
+        }
+
+        // Colision original con caballero.
         if (colisionaCon(caballero.getArea())) {
 
             alBloquear(caballero);
             return true;
         }
 
+        // Impacto original con castillo.
         if (llegoAlSuelo()) {
 
             alImpactar(castillo);
@@ -83,13 +143,10 @@ public abstract class Proyectil {
             EstrategiaMovimiento nuevaEstrategia) {
 
         if (nuevaEstrategia != null) {
-
-            this.estrategiaMovimiento =
-                nuevaEstrategia;
+            estrategiaMovimiento = nuevaEstrategia;
         }
     }
 
-    // Dibujado normal, sin rotacion.
     public void dibujar(SpriteBatch batch) {
 
         batch.draw(
@@ -101,7 +158,6 @@ public abstract class Proyectil {
         );
     }
 
-    // NUEVO: dibujar con rotacion.
     protected void dibujarRotado(
             SpriteBatch batch,
             float angulo) {
@@ -127,27 +183,22 @@ public abstract class Proyectil {
     }
 
     public boolean colisionaCon(Rectangle otraArea) {
-
         return area.overlaps(otraArea);
     }
 
     public boolean llegoAlSuelo() {
-
         return area.y <= ALTURA_SUELO;
     }
 
     public Rectangle getArea() {
-
         return area;
     }
 
     public int getDaño() {
-
         return daño;
     }
 
     public float getVelocidad() {
-
         return velocidad;
     }
 
