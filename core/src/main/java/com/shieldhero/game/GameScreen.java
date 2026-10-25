@@ -32,6 +32,10 @@ public class GameScreen implements Screen {
     private ArqueroEnemigo arqueroEnemigo1;
     private ArqueroEnemigo arqueroEnemigo2;
 
+    // CANON ENEMIGO
+    private Texture texturaCanon;
+    private CanonEnemigo canonEnemigo;
+
     private Caballero caballero;
     private Castillo castillo;
     private Lluvia lluvia;
@@ -151,7 +155,7 @@ public class GameScreen implements Screen {
             sonidoHerido
         );
 
-        // SPRITE DE PARRY
+        // SPRITE DEL PARRY
         Texture texturaParry = new Texture(
             Gdx.files.internal(
                 "personajes/caballero_parry.png"
@@ -165,7 +169,6 @@ public class GameScreen implements Screen {
         // DOS ARQUEROS ENEMIGOS
         // =====================================
 
-        // Ambos comparten la misma textura.
         texturaArquero = new Texture(
             Gdx.files.internal(
                 "personajes/arquero_enemigo.png"
@@ -181,6 +184,23 @@ public class GameScreen implements Screen {
         arqueroEnemigo2 = new ArqueroEnemigo(
             texturaArquero,
             748f,
+            120f
+        );
+
+        // =====================================
+        // CANON ENEMIGO
+        // =====================================
+
+        // Nombre exacto de tu imagen.
+        texturaCanon = new Texture(
+            Gdx.files.internal(
+                "personajes/canon_Enemigo.png"
+            )
+        );
+
+        canonEnemigo = new CanonEnemigo(
+            texturaCanon,
+            590f,
             120f
         );
 
@@ -222,12 +242,14 @@ public class GameScreen implements Screen {
             musica
         );
 
-        // NUEVO: conectar los arqueros ANTES
-        // de crear el primer proyectil.
+        // Conectar arqueros antes de crear proyectiles.
         lluvia.setArqueros(
             arqueroEnemigo1,
             arqueroEnemigo2
         );
+
+        // Conectar el canon con las piedras.
+        lluvia.setCanon(canonEnemigo);
 
         lluvia.crear();
     }
@@ -309,20 +331,32 @@ public class GameScreen implements Screen {
             }
         }
 
-        // NUEVO: actualizar las animaciones
-        // de ambos arqueros cada fotograma.
+        // =====================================
+        // ACTUALIZAR ANIMACIONES ENEMIGAS
+        // =====================================
+
         arqueroEnemigo1.actualizar(delta);
         arqueroEnemigo2.actualizar(delta);
 
-        // LIMPIAR PANTALLA
+        // Actualizar retroceso, fogonazo y humo.
+        canonEnemigo.actualizar(delta);
+
+        // =====================================
+        // PREPARAR LA CAMARA
+        // =====================================
+
         ScreenUtils.clear(0f, 0f, 0.2f, 1f);
 
         camera.update();
+
         batch.setProjectionMatrix(camera.combined);
 
         batch.begin();
 
-        // DIBUJAR FONDO
+        // =====================================
+        // DIBUJAR ESCENARIO
+        // =====================================
+
         batch.draw(
             texturaFondo,
             0,
@@ -331,15 +365,27 @@ public class GameScreen implements Screen {
             480
         );
 
-        // DIBUJAR LOS DOS ARQUEROS
+        // =====================================
+        // DIBUJAR ENEMIGOS
+        // =====================================
+
+        canonEnemigo.dibujar(batch);
+
         arqueroEnemigo1.dibujar(batch);
         arqueroEnemigo2.dibujar(batch);
 
-        // CABALLERO Y PROYECTILES
+        // =====================================
+        // DIBUJAR CABALLERO Y PROYECTILES
+        // =====================================
+
         caballero.dibujar(batch);
+
         lluvia.actualizarDibujoLluvia(batch);
 
+        // =====================================
         // HUD PRINCIPAL
+        // =====================================
+
         font.setColor(Color.WHITE);
 
         font.draw(
@@ -364,7 +410,10 @@ public class GameScreen implements Screen {
             470
         );
 
-        // RONDAS O SUPERVIVENCIA
+        // =====================================
+        // HUD DE RONDAS O SUPERVIVENCIA
+        // =====================================
+
         if (gestorPartida.estaEnSupervivencia()) {
 
             font.setColor(Color.GOLD);
@@ -409,6 +458,7 @@ public class GameScreen implements Screen {
             );
         }
 
+        // BARRAS DE HABILIDADES
         dibujarHUDHabilidades();
 
         // MENSAJE DE DESCANSO
@@ -417,6 +467,17 @@ public class GameScreen implements Screen {
         }
 
         batch.end();
+
+        // =====================================
+        // NUEVO: FOGONAZO Y HUMO DEL CANON
+        // =====================================
+
+        // ShapeRenderer debe utilizar la misma
+        // proyeccion que el SpriteBatch.
+        canonEnemigo.configurarCamara(camera.combined);
+
+        // Dibujar los efectos despues de cerrar el batch.
+        canonEnemigo.dibujarEfectos();
     }
 
     private void dibujarDescanso() {
@@ -585,7 +646,7 @@ public class GameScreen implements Screen {
 
     @Override
     public void pause() {
-        // No abrir pantalla de pausa.
+        // Sin pantalla de pausa.
     }
 
     @Override
@@ -608,8 +669,12 @@ public class GameScreen implements Screen {
         texturaBarra.dispose();
         fontHabilidades.dispose();
 
-        // Textura compartida por los dos arqueros.
+        // Liberar las texturas de los enemigos.
         texturaArquero.dispose();
+        texturaCanon.dispose();
+
+        // NUEVO: liberar el ShapeRenderer del canon.
+        canonEnemigo.destruir();
 
         caballero.destruir();
         lluvia.destruir();
