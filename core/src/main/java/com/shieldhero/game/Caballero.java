@@ -19,7 +19,7 @@ public class Caballero {
 
     // Limites horizontales del patio defendido.
     private static final float LIMITE_IZQUIERDO = 30f;
-    private static final float LIMITE_DERECHO = 395f;
+    private static final float LIMITE_DERECHO = 415f;
 
     // Posicion inicial del caballero.
     private static final float POSICION_INICIAL_X = 250f;

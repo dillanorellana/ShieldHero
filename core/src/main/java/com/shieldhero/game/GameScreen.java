@@ -27,20 +27,47 @@ public class GameScreen implements Screen {
     private Texture texturaFondo;
     private Texture texturaBarra;
 
-    // DOS ARQUEROS ENEMIGOS
+    // =====================================
+    // MURALLA CON DANO VISUAL
+    // =====================================
+
+    private MurallaDanioVisual murallaDanioVisual;
+
+    // =====================================
+    // ARQUEROS
+    // =====================================
+
     private Texture texturaArquero;
+
     private ArqueroEnemigo arqueroEnemigo1;
     private ArqueroEnemigo arqueroEnemigo2;
 
-    // CANON ENEMIGO
+    // =====================================
+    // CANON
+    // =====================================
+
     private Texture texturaCanon;
     private CanonEnemigo canonEnemigo;
+
+    // =====================================
+    // VOLCAN
+    // =====================================
+
+    private VolcanEnemigo volcanEnemigo;
+
+    // =====================================
+    // ELEMENTOS DEL JUEGO
+    // =====================================
 
     private Caballero caballero;
     private Castillo castillo;
     private Lluvia lluvia;
 
     private GestorPartida gestorPartida;
+
+    // =====================================
+    // COLORES DEL HUD
+    // =====================================
 
     private static final Color COLOR_DASH =
         new Color(0.22f, 0.74f, 0.97f, 1f);
@@ -50,6 +77,10 @@ public class GameScreen implements Screen {
 
     private static final Color COLOR_FONDO_BARRA =
         new Color(0.18f, 0.22f, 0.28f, 1f);
+
+    // =====================================
+    // CONSTRUCTOR
+    // =====================================
 
     public GameScreen(final ShieldHeroGame game) {
 
@@ -67,31 +98,10 @@ public class GameScreen implements Screen {
         camera = new OrthographicCamera();
         camera.setToOrtho(false, 800, 480);
 
-        // DIAGNOSTICO DE RECURSOS
-        System.out.println("================================");
-        System.out.println("DIAGNOSTICO DE RECURSOS");
-        System.out.println(
-            "Directorio de trabajo: "
-                + System.getProperty("user.dir")
-        );
+        // =====================================
+        // FONDO
+        // =====================================
 
-        System.out.println(
-            "Fondo antiguo existe: "
-                + Gdx.files.internal(
-                    "escenarios/fondo.png"
-                ).exists()
-        );
-
-        System.out.println(
-            "Fondo asedio existe: "
-                + Gdx.files.internal(
-                    "escenarios/fondo_asedio.png"
-                ).exists()
-        );
-
-        System.out.println("================================");
-
-        // FONDO DEL ESCENARIO
         if (Gdx.files.internal(
                 "escenarios/fondo_asedio.png"
             ).exists()) {
@@ -102,19 +112,7 @@ public class GameScreen implements Screen {
                 )
             );
 
-            System.out.println(
-                "FONDO CARGADO: fondo_asedio.png"
-            );
-
         } else {
-
-            System.out.println(
-                "AVISO: No se encontro fondo_asedio.png"
-            );
-
-            System.out.println(
-                "Se intentara cargar fondo.png"
-            );
 
             texturaFondo = new Texture(
                 Gdx.files.internal(
@@ -123,7 +121,16 @@ public class GameScreen implements Screen {
             );
         }
 
-        // TEXTURA PARA BARRAS DEL HUD
+        // =====================================
+        // NUEVO: MURALLA
+        // =====================================
+
+        murallaDanioVisual = new MurallaDanioVisual();
+
+        // =====================================
+        // TEXTURA DEL HUD
+        // =====================================
+
         Pixmap pixmap = new Pixmap(
             1,
             1,
@@ -134,12 +141,19 @@ public class GameScreen implements Screen {
         pixmap.fill();
 
         texturaBarra = new Texture(pixmap);
+
         pixmap.dispose();
 
+        // =====================================
         // CASTILLO
+        // =====================================
+
         castillo = new Castillo();
 
+        // =====================================
         // CABALLERO
+        // =====================================
+
         Texture texturaCaballero = new Texture(
             Gdx.files.internal(
                 "personajes/caballero.png"
@@ -155,7 +169,6 @@ public class GameScreen implements Screen {
             sonidoHerido
         );
 
-        // SPRITE DEL PARRY
         Texture texturaParry = new Texture(
             Gdx.files.internal(
                 "personajes/caballero_parry.png"
@@ -166,7 +179,7 @@ public class GameScreen implements Screen {
         caballero.crear();
 
         // =====================================
-        // DOS ARQUEROS ENEMIGOS
+        // ARQUEROS
         // =====================================
 
         texturaArquero = new Texture(
@@ -188,10 +201,9 @@ public class GameScreen implements Screen {
         );
 
         // =====================================
-        // CANON ENEMIGO
+        // CANON
         // =====================================
 
-        // Nombre exacto de tu imagen.
         texturaCanon = new Texture(
             Gdx.files.internal(
                 "personajes/canon_Enemigo.png"
@@ -202,6 +214,20 @@ public class GameScreen implements Screen {
             texturaCanon,
             590f,
             120f
+        );
+
+        // =====================================
+        // VOLCAN
+        // =====================================
+
+        volcanEnemigo = new VolcanEnemigo(
+            640f,
+            365f
+        );
+
+        volcanEnemigo.setCraterOffset(
+            0f,
+            0f
         );
 
         // =====================================
@@ -234,6 +260,10 @@ public class GameScreen implements Screen {
             Gdx.files.internal("rain.mp3")
         );
 
+        // =====================================
+        // SISTEMA DE ATAQUES
+        // =====================================
+
         lluvia = new Lluvia(
             texturaFlecha,
             texturaPiedra,
@@ -242,23 +272,29 @@ public class GameScreen implements Screen {
             musica
         );
 
-        // Conectar arqueros antes de crear proyectiles.
         lluvia.setArqueros(
             arqueroEnemigo1,
             arqueroEnemigo2
         );
 
-        // Conectar el canon con las piedras.
         lluvia.setCanon(canonEnemigo);
+        lluvia.setVolcan(volcanEnemigo);
 
         lluvia.crear();
     }
 
+    // =====================================
+    // RENDER
+    // =====================================
+
     @Override
     public void render(float delta) {
 
-        // El caballero puede moverse durante descansos.
         caballero.actualizarMovimiento();
+
+        // =====================================
+        // SISTEMA DE RONDAS
+        // =====================================
 
         if (gestorPartida.estaEnDescanso()) {
 
@@ -270,25 +306,24 @@ public class GameScreen implements Screen {
 
         } else {
 
-            // ACTUALIZAR SUPERVIVENCIA
             if (gestorPartida.estaEnSupervivencia()) {
-
                 gestorPartida.actualizarSupervivencia(delta);
             }
 
-            // ACTUALIZAR PROYECTILES
             boolean partidaActiva =
                 lluvia.actualizarMovimiento(
                     caballero,
                     castillo
                 );
 
-            // ACTUALIZAR RECORD
             gestorPartida.actualizarRecord(
                 caballero.getPuntos()
             );
 
+            // =====================================
             // DERROTA
+            // =====================================
+
             if (!partidaActiva
                     || castillo.estaDestruido()) {
 
@@ -300,12 +335,18 @@ public class GameScreen implements Screen {
                 return;
             }
 
-            // ACTUALIZAR RONDAS
+            // =====================================
+            // PROGRESO DE RONDAS
+            // =====================================
+
             gestorPartida.actualizar(
                 caballero.getPuntos()
             );
 
-            // VICTORIA DEL TUTORIAL
+            // =====================================
+            // VICTORIA
+            // =====================================
+
             if (gestorPartida.hayVictoria()) {
 
                 int puntosFinales =
@@ -322,7 +363,10 @@ public class GameScreen implements Screen {
                 return;
             }
 
-            // DESCANSO ENTRE RONDAS
+            // =====================================
+            // DESCANSO
+            // =====================================
+
             if (gestorPartida.estaEnDescanso()) {
 
                 lluvia.limpiarProyectiles();
@@ -332,17 +376,17 @@ public class GameScreen implements Screen {
         }
 
         // =====================================
-        // ACTUALIZAR ANIMACIONES ENEMIGAS
+        // ANIMACIONES ENEMIGAS
         // =====================================
 
         arqueroEnemigo1.actualizar(delta);
         arqueroEnemigo2.actualizar(delta);
 
-        // Actualizar retroceso, fogonazo y humo.
         canonEnemigo.actualizar(delta);
+        volcanEnemigo.actualizar(delta);
 
         // =====================================
-        // PREPARAR LA CAMARA
+        // PREPARAR DIBUJO
         // =====================================
 
         ScreenUtils.clear(0f, 0f, 0.2f, 1f);
@@ -353,8 +397,10 @@ public class GameScreen implements Screen {
 
         batch.begin();
 
+        batch.setColor(Color.WHITE);
+
         // =====================================
-        // DIBUJAR ESCENARIO
+        // 1. FONDO ORIGINAL
         // =====================================
 
         batch.draw(
@@ -366,7 +412,20 @@ public class GameScreen implements Screen {
         );
 
         // =====================================
-        // DIBUJAR ENEMIGOS
+        // 2. NUEVO: DANO DE LA MURALLA
+        // =====================================
+
+        // Usa las vidas actuales para elegir
+        // automaticamente muralla_5.png,
+        // muralla_4.png ... muralla_0.png.
+
+        murallaDanioVisual.dibujar(
+            batch,
+            castillo.getVidas()
+        );
+
+        // =====================================
+        // 3. ENEMIGOS
         // =====================================
 
         canonEnemigo.dibujar(batch);
@@ -375,7 +434,7 @@ public class GameScreen implements Screen {
         arqueroEnemigo2.dibujar(batch);
 
         // =====================================
-        // DIBUJAR CABALLERO Y PROYECTILES
+        // 4. CABALLERO Y PROYECTILES
         // =====================================
 
         caballero.dibujar(batch);
@@ -383,9 +442,10 @@ public class GameScreen implements Screen {
         lluvia.actualizarDibujoLluvia(batch);
 
         // =====================================
-        // HUD PRINCIPAL
+        // 5. HUD PRINCIPAL
         // =====================================
 
+        batch.setColor(Color.WHITE);
         font.setColor(Color.WHITE);
 
         font.draw(
@@ -397,21 +457,24 @@ public class GameScreen implements Screen {
 
         font.draw(
             batch,
-            "Record: " + gestorPartida.getRecord(),
+            "Record: "
+                + gestorPartida.getRecord(),
             310,
             470
         );
 
         font.draw(
             batch,
-            "Castillo: " + castillo.getVidas()
-                + "/" + castillo.getVidasMaximas(),
+            "Castillo: "
+                + castillo.getVidas()
+                + "/"
+                + castillo.getVidasMaximas(),
             650,
             470
         );
 
         // =====================================
-        // HUD DE RONDAS O SUPERVIVENCIA
+        // HUD DE RONDAS
         // =====================================
 
         if (gestorPartida.estaEnSupervivencia()) {
@@ -458,10 +521,16 @@ public class GameScreen implements Screen {
             );
         }
 
-        // BARRAS DE HABILIDADES
+        // =====================================
+        // HUD DE HABILIDADES
+        // =====================================
+
         dibujarHUDHabilidades();
 
-        // MENSAJE DE DESCANSO
+        // =====================================
+        // MENSAJE ENTRE RONDAS
+        // =====================================
+
         if (gestorPartida.estaEnDescanso()) {
             dibujarDescanso();
         }
@@ -469,16 +538,29 @@ public class GameScreen implements Screen {
         batch.end();
 
         // =====================================
-        // NUEVO: FOGONAZO Y HUMO DEL CANON
+        // EFECTOS VISUALES DEL CANON
         // =====================================
 
-        // ShapeRenderer debe utilizar la misma
-        // proyeccion que el SpriteBatch.
-        canonEnemigo.configurarCamara(camera.combined);
+        canonEnemigo.configurarCamara(
+            camera.combined
+        );
 
-        // Dibujar los efectos despues de cerrar el batch.
         canonEnemigo.dibujarEfectos();
+
+        // =====================================
+        // EFECTOS VISUALES DEL VOLCAN
+        // =====================================
+
+        volcanEnemigo.configurarCamara(
+            camera.combined
+        );
+
+        volcanEnemigo.dibujarEfectos();
     }
+
+    // =====================================
+    // MENSAJE DE DESCANSO
+    // =====================================
 
     private void dibujarDescanso() {
 
@@ -545,6 +627,10 @@ public class GameScreen implements Screen {
         );
     }
 
+    // =====================================
+    // HUD DASH Y PARRY
+    // =====================================
+
     private void dibujarHUDHabilidades() {
 
         dibujarBarraHabilidad(
@@ -561,10 +647,14 @@ public class GameScreen implements Screen {
             10,
             385,
             caballero.getTiempoRecargaParry(),
-            1.0f,
+            1f,
             COLOR_PARRY
         );
     }
+
+    // =====================================
+    // BARRA DE HABILIDAD
+    // =====================================
 
     private void dibujarBarraHabilidad(
             String nombre,
@@ -592,7 +682,7 @@ public class GameScreen implements Screen {
             y + 15f
         );
 
-        // FONDO DE BARRA
+        // Fondo.
         batch.setColor(COLOR_FONDO_BARRA);
 
         batch.draw(
@@ -603,7 +693,7 @@ public class GameScreen implements Screen {
             alto
         );
 
-        // PROGRESO DE BARRA
+        // Progreso.
         batch.setColor(color);
 
         batch.draw(
@@ -639,6 +729,10 @@ public class GameScreen implements Screen {
         );
     }
 
+    // =====================================
+    // CICLO DE VIDA
+    // =====================================
+
     @Override
     public void show() {
         lluvia.continuar();
@@ -646,7 +740,6 @@ public class GameScreen implements Screen {
 
     @Override
     public void pause() {
-        // Sin pantalla de pausa.
     }
 
     @Override
@@ -662,19 +755,26 @@ public class GameScreen implements Screen {
     public void resize(int width, int height) {
     }
 
+    // =====================================
+    // LIBERACION DE RECURSOS
+    // =====================================
+
     @Override
     public void dispose() {
 
         texturaFondo.dispose();
         texturaBarra.dispose();
+
         fontHabilidades.dispose();
 
-        // Liberar las texturas de los enemigos.
+        // NUEVO: liberar imagenes de muralla.
+        murallaDanioVisual.destruir();
+
         texturaArquero.dispose();
         texturaCanon.dispose();
 
-        // NUEVO: liberar el ShapeRenderer del canon.
         canonEnemigo.destruir();
+        volcanEnemigo.destruir();
 
         caballero.destruir();
         lluvia.destruir();

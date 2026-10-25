@@ -11,25 +11,6 @@ import com.badlogic.gdx.utils.TimeUtils;
 
 public class Lluvia {
 
-    // LIMITES DEL PATIO
-    private static final float LIMITE_IZQUIERDO = 30f;
-    private static final float LIMITE_DERECHO = 427f;
-
-    private static final float ANCHO_PROYECTIL = 32f;
-    private static final float MARGEN_SEGURIDAD = 12f;
-
-    private static final float ALTURA_APARICION = 480f;
-    private static final float ALTURA_SUELO = 120f;
-
-    // ORIGEN DE LAS FLECHAS
-    private static final float FLECHA_ARQUERO_1_X = 690f;
-    private static final float FLECHA_ARQUERO_2_X = 748f;
-    private static final float ALTURA_ARCO = 165f;
-
-    // BOCA DEL CANON
-    private static final float CANON_ORIGEN_X = 594f;
-    private static final float CANON_ORIGEN_Y = 176f;
-
     private Array<Proyectil> proyectiles;
     private long ultimoProyectil;
 
@@ -42,12 +23,10 @@ public class Lluvia {
     private Sound sonidoBloqueo;
     private Music musica;
 
-    // ARQUEROS
     private ArqueroEnemigo arqueroEnemigo1;
     private ArqueroEnemigo arqueroEnemigo2;
-
-    // NUEVO: CANON CON ANIMACION
     private CanonEnemigo canonEnemigo;
+    private VolcanEnemigo volcanEnemigo;
 
     public Lluvia(
             Texture flecha,
@@ -59,29 +38,13 @@ public class Lluvia {
         this.texturaFlecha = flecha;
         this.texturaPiedra = piedra;
         this.texturaFuego = fuego;
-
         this.sonidoBloqueo = sonido;
         this.musica = musica;
-    }
-
-    // Conectar los arqueros.
-    public void setArqueros(
-            ArqueroEnemigo arquero1,
-            ArqueroEnemigo arquero2) {
-
-        this.arqueroEnemigo1 = arquero1;
-        this.arqueroEnemigo2 = arquero2;
-    }
-
-    // NUEVO: conectar el canon.
-    public void setCanon(CanonEnemigo canon) {
-        this.canonEnemigo = canon;
     }
 
     public void crear() {
 
         proyectiles = new Array<Proyectil>();
-
         ultimaPosicionX = -1f;
 
         crearProyectil();
@@ -90,60 +53,71 @@ public class Lluvia {
         musica.play();
     }
 
-    // INTERVALO DE APARICION
+    public void setArqueros(
+            ArqueroEnemigo arquero1,
+            ArqueroEnemigo arquero2) {
+
+        this.arqueroEnemigo1 = arquero1;
+        this.arqueroEnemigo2 = arquero2;
+    }
+
+    public void setCanon(CanonEnemigo canonEnemigo) {
+        this.canonEnemigo = canonEnemigo;
+    }
+
+    public void setVolcan(VolcanEnemigo volcanEnemigo) {
+        this.volcanEnemigo = volcanEnemigo;
+    }
+
     private float obtenerIntervaloAparicion() {
-
         return GestorPartida.getInstancia()
-            .getIntervaloAparicionActual();
+                .getIntervaloAparicionActual();
     }
 
-    // POSICION DE IMPACTO EN EL PATIO
-    private float calcularPosicionX(
-            ConfiguracionRonda configuracion) {
 
-        float minimoPermitido =
-            LIMITE_IZQUIERDO + MARGEN_SEGURIDAD;
+private float calcularPosicionX(
+        ConfiguracionRonda configuracion) {
 
-        float maximoPermitido =
-            LIMITE_DERECHO
-            - ANCHO_PROYECTIL
-            - MARGEN_SEGURIDAD;
+    // Zona del patio que el caballero puede defender.
+    float minimoPermitido = 42f;
+    float maximoPermitido = 383f;
 
-        if (ultimaPosicionX < 0f) {
+    // Primer ataque de la ronda.
+    if (ultimaPosicionX < 0f) {
 
-            ultimaPosicionX = MathUtils.random(
-                minimoPermitido,
-                maximoPermitido
-            );
-
-            return ultimaPosicionX;
-        }
-
-        // Distancia maxima definida por Builder.
-        float distancia =
-            configuracion.getDistanciaMaxima();
-
-        float minimo = Math.max(
+        ultimaPosicionX = MathUtils.random(
             minimoPermitido,
-            ultimaPosicionX - distancia
+            maximoPermitido
         );
 
-        float maximo = Math.min(
-            maximoPermitido,
-            ultimaPosicionX + distancia
-        );
-
-        float nuevaPosicion = MathUtils.random(
-            minimo,
-            maximo
-        );
-
-        ultimaPosicionX = nuevaPosicion;
-
-        return nuevaPosicion;
+        return ultimaPosicionX;
     }
 
-    // SELECCIONAR EL TIPO DE PROYECTIL
+    // Respetar la distancia maxima del Builder.
+    float distancia =
+        configuracion.getDistanciaMaxima();
+
+    float minimo = Math.max(
+        minimoPermitido,
+        ultimaPosicionX - distancia
+    );
+
+    float maximo = Math.min(
+        maximoPermitido,
+        ultimaPosicionX + distancia
+    );
+
+    float nuevaPosicion = MathUtils.random(
+        minimo,
+        maximo
+    );
+
+    ultimaPosicionX = nuevaPosicion;
+
+    return nuevaPosicion;
+}
+
+
     private int seleccionarTipoProyectil(int ronda) {
 
         int probabilidad = MathUtils.random(0, 99);
@@ -151,15 +125,12 @@ public class Lluvia {
         switch (ronda) {
 
             case 1:
-                // 100% flechas.
                 return 1;
 
             case 2:
-                // 65% flechas, 35% piedras.
                 return probabilidad < 65 ? 1 : 2;
 
             case 3:
-                // 45% flechas, 35% piedras, 20% fuego.
                 if (probabilidad < 45) {
                     return 1;
                 } else if (probabilidad < 80) {
@@ -168,7 +139,6 @@ public class Lluvia {
                 return 3;
 
             case 4:
-                // 35% flechas, 35% piedras, 30% fuego.
                 if (probabilidad < 35) {
                     return 1;
                 } else if (probabilidad < 70) {
@@ -177,58 +147,28 @@ public class Lluvia {
                 return 3;
 
             case 5:
-            default:
-                // 30% flechas, 35% piedras, 35% fuego.
                 if (probabilidad < 30) {
                     return 1;
                 } else if (probabilidad < 65) {
                     return 2;
                 }
                 return 3;
+
+            default:
+                if (probabilidad < 30) {
+                    return 1;
+                } else if (probabilidad < 60) {
+                    return 2;
+                }
+                return 3;
         }
     }
 
-    // ELEGIR ARQUERO Y ACTIVAR ANIMACION
-    private float seleccionarOrigenFlecha() {
-
-        if (arqueroEnemigo1 == null
-                && arqueroEnemigo2 == null) {
-
-            return FLECHA_ARQUERO_1_X;
-        }
-
-        if (arqueroEnemigo1 == null) {
-
-            arqueroEnemigo2.disparar();
-            return FLECHA_ARQUERO_2_X;
-        }
-
-        if (arqueroEnemigo2 == null) {
-
-            arqueroEnemigo1.disparar();
-            return FLECHA_ARQUERO_1_X;
-        }
-
-        if (MathUtils.randomBoolean()) {
-
-            arqueroEnemigo1.disparar();
-            return FLECHA_ARQUERO_1_X;
-
-        } else {
-
-            arqueroEnemigo2.disparar();
-            return FLECHA_ARQUERO_2_X;
-        }
-    }
-
-    // CREAR PROYECTILES
     private void crearProyectil() {
 
         ConfiguracionRonda configuracion =
             GestorPartida.getInstancia()
                 .getConfiguracionActual();
-
-        float x = calcularPosicionX(configuracion);
 
         int tipo = seleccionarTipoProyectil(
             configuracion.getNumero()
@@ -236,124 +176,110 @@ public class Lluvia {
 
         Proyectil nuevo;
 
-        switch (tipo) {
+        // Punto donde caerá o intentará llegar
+        float destinoX = calcularPosicionX(configuracion);
 
-            case 1:
+        if (tipo == 1) {
+            // FLECHAS: salen desde uno de los arqueros
+            ArqueroEnemigo arqueroSeleccionado =
+                MathUtils.randomBoolean()
+                    ? arqueroEnemigo1
+                    : arqueroEnemigo2;
 
-                // FLECHA PARABOLICA
-                float origenFlechaX =
-                    seleccionarOrigenFlecha();
+            float origenX = 720f;
+            float origenY = 170f;
 
-                float origenFlechaY = ALTURA_ARCO;
+            if (arqueroSeleccionado != null) {
 
-                nuevo = new Flecha(
-                    origenFlechaX,
-                    origenFlechaY,
-                    texturaFlecha
-                );
-
-                nuevo.setEstrategiaMovimiento(
-                    new MovimientoParabolicoArquero(
-                        origenFlechaX,
-                        origenFlechaY,
-                        x,
-                        ALTURA_SUELO - 1f
-                    )
-                );
-
-                break;
-
-            case 2:
-
-                // PIEDRA PARABOLICA DEL CANON
-                nuevo = new Piedra(
-                    CANON_ORIGEN_X,
-                    CANON_ORIGEN_Y,
-                    texturaPiedra
-                );
-
-                nuevo.setEstrategiaMovimiento(
-                    new MovimientoParabolicoCanon(
-                        CANON_ORIGEN_X,
-                        CANON_ORIGEN_Y,
-                        x,
-                        ALTURA_SUELO - 1f
-                    )
-                );
-
-                // NUEVO: activar retroceso al disparar.
-                if (canonEnemigo != null) {
-                    canonEnemigo.disparar();
+                // Mantener los puntos de disparo originales.
+                if (arqueroSeleccionado == arqueroEnemigo1) {
+                    origenX = 690f;
+                } else {
+                    origenX = 748f;
                 }
 
-                break;
+                origenY = 165f;
 
-            default:
-
-                // BOLA DE FUEGO: SIN CAMBIOS
-                nuevo = new BolaFuego(
-                    x,
-                    ALTURA_APARICION,
-                    texturaFuego
-                );
-
-                configurarMovimientoActual(
-                    nuevo,
-                    x,
-                    configuracion
-                );
-
-                break;
-        }
-
-        proyectiles.add(nuevo);
-
-        ultimoProyectil = TimeUtils.nanoTime();
-    }
-
-    // MOVIMIENTO ACTUAL DEL FUEGO
-    private void configurarMovimientoActual(
-            Proyectil proyectil,
-            float x,
-            ConfiguracionRonda configuracion) {
-
-        float probabilidadDiagonal =
-            configuracion.getProbabilidadDiagonal();
-
-        if (MathUtils.randomBoolean(
-                probabilidadDiagonal)) {
-
-            float centro =
-                (LIMITE_IZQUIERDO + LIMITE_DERECHO)
-                / 2f;
-
-            float direccion;
-
-            if (x < centro) {
-                direccion = 1f;
-            } else {
-                direccion = -1f;
+                arqueroSeleccionado.disparar();
             }
 
-            proyectil.setEstrategiaMovimiento(
-                new MovimientoDiagonal(direccion)
+            nuevo = new Flecha(
+                origenX,
+                origenY,
+                texturaFlecha
+            );
+
+            nuevo.setEstrategiaMovimiento(
+                new MovimientoParabolicoArquero(
+                    origenX,
+                    origenY,
+                    destinoX,
+                    0f
+                )
+            );
+
+        } else if (tipo == 2) {
+            // PIEDRAS: salen desde el cañón
+            float origenX = 620f;
+            float origenY = 165f;
+
+            if (canonEnemigo != null) {
+                origenX = canonEnemigo.getCentroX() - 18f;
+                origenY = canonEnemigo.getCentroY() + 8f;
+                canonEnemigo.disparar();
+            }
+
+            nuevo = new Piedra(
+                origenX,
+                origenY,
+                texturaPiedra
+            );
+
+            nuevo.setEstrategiaMovimiento(
+                new MovimientoParabolicoCanon(
+                    origenX,
+                    origenY,
+                    destinoX,
+                    0f
+                )
             );
 
         } else {
+            // BOLAS DE FUEGO: salen desde el volcán
+            float origenX = 635f;
+            float origenY = 340f;
 
-            proyectil.setEstrategiaMovimiento(
-                new MovimientoVertical()
+            if (volcanEnemigo != null) {
+                origenX = volcanEnemigo.getCraterX();
+                origenY = volcanEnemigo.getCraterY();
+                volcanEnemigo.erupcionar();
+            }
+
+            nuevo = new BolaFuego(
+                origenX,
+                origenY,
+                texturaFuego
+            );
+
+            nuevo.setEstrategiaMovimiento(
+                new MovimientoParabolicoVolcan(
+                    origenX,
+                    origenY,
+                    destinoX,
+                    0f
+                )
             );
         }
+
+        proyectiles.add(nuevo);
+        ultimoProyectil = TimeUtils.nanoTime();
     }
 
-    // ACTUALIZAR PROYECTILES Y COLISIONES
     public boolean actualizarMovimiento(
             Caballero caballero,
             Castillo castillo) {
 
         float intervalo = obtenerIntervaloAparicion();
-
         long intervaloNanos =
             (long) (intervalo * 1000000000L);
 
@@ -369,7 +295,9 @@ public class Lluvia {
 
             Proyectil proyectil = proyectiles.get(i);
 
-            // TEMPLATE METHOD
+            boolean golpeaCaballeroAntes =
+                proyectil.colisionaCon(caballero.getArea());
+
             boolean eliminar = proyectil.procesar(
                 delta,
                 caballero,
@@ -378,10 +306,9 @@ public class Lluvia {
 
             if (eliminar) {
 
-                // Sonido al bloquear.
-                if (proyectil.colisionaCon(
-                        caballero.getArea())) {
-
+                if (golpeaCaballeroAntes
+                        || proyectil.colisionaCon(
+                            caballero.getArea())) {
                     sonidoBloqueo.play();
                 }
 
@@ -393,16 +320,13 @@ public class Lluvia {
         return !castillo.estaDestruido();
     }
 
-    // DIBUJAR PROYECTILES
-    public void actualizarDibujoLluvia(
-            SpriteBatch batch) {
+    public void actualizarDibujoLluvia(SpriteBatch batch) {
 
         for (Proyectil proyectil : proyectiles) {
             proyectil.dibujar(batch);
         }
     }
 
-    // LIMPIAR PROYECTILES
     public void limpiarProyectiles() {
 
         if (proyectiles != null) {
@@ -410,11 +334,8 @@ public class Lluvia {
         }
     }
 
-    // REINICIAR APARICION
     public void reiniciarTiempoAparicion() {
-
         ultimoProyectil = TimeUtils.nanoTime();
-
         ultimaPosicionX = -1f;
     }
 
