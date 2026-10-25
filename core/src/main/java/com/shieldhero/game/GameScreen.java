@@ -1,4 +1,3 @@
-
 package com.shieldhero.game;
 
 import java.util.Locale;
@@ -27,6 +26,11 @@ public class GameScreen implements Screen {
 
     private Texture texturaFondo;
     private Texture texturaBarra;
+
+    // DOS ARQUEROS ENEMIGOS
+    private Texture texturaArquero;
+    private ArqueroEnemigo arqueroEnemigo1;
+    private ArqueroEnemigo arqueroEnemigo2;
 
     private Caballero caballero;
     private Castillo castillo;
@@ -59,26 +63,31 @@ public class GameScreen implements Screen {
         camera = new OrthographicCamera();
         camera.setToOrtho(false, 800, 480);
 
-        // Diagnostico de las rutas de recursos.
+        // DIAGNOSTICO DE RECURSOS
         System.out.println("================================");
         System.out.println("DIAGNOSTICO DE RECURSOS");
-        System.out.println("Directorio de trabajo: "
-            + System.getProperty("user.dir"));
+        System.out.println(
+            "Directorio de trabajo: "
+                + System.getProperty("user.dir")
+        );
 
-        System.out.println("Fondo antiguo existe: "
-            + Gdx.files.internal(
-                "escenarios/fondo.png"
-            ).exists());
+        System.out.println(
+            "Fondo antiguo existe: "
+                + Gdx.files.internal(
+                    "escenarios/fondo.png"
+                ).exists()
+        );
 
-        System.out.println("Fondo asedio existe: "
-            + Gdx.files.internal(
-                "escenarios/fondo_asedio.png"
-            ).exists());
+        System.out.println(
+            "Fondo asedio existe: "
+                + Gdx.files.internal(
+                    "escenarios/fondo_asedio.png"
+                ).exists()
+        );
 
         System.out.println("================================");
 
-        // Cargar el fondo nuevo si existe.
-        // Si falta, usar el fondo anterior.
+        // FONDO DEL ESCENARIO
         if (Gdx.files.internal(
                 "escenarios/fondo_asedio.png"
             ).exists()) {
@@ -110,9 +119,11 @@ public class GameScreen implements Screen {
             );
         }
 
-        // Textura blanca para las barras de habilidades.
+        // TEXTURA PARA BARRAS DEL HUD
         Pixmap pixmap = new Pixmap(
-            1, 1, Pixmap.Format.RGBA8888
+            1,
+            1,
+            Pixmap.Format.RGBA8888
         );
 
         pixmap.setColor(Color.WHITE);
@@ -121,10 +132,10 @@ public class GameScreen implements Screen {
         texturaBarra = new Texture(pixmap);
         pixmap.dispose();
 
-        // Castillo.
+        // CASTILLO
         castillo = new Castillo();
 
-        // Caballero.
+        // CABALLERO
         Texture texturaCaballero = new Texture(
             Gdx.files.internal(
                 "personajes/caballero.png"
@@ -140,7 +151,7 @@ public class GameScreen implements Screen {
             sonidoHerido
         );
 
-        // Sprite de Parry.
+        // SPRITE DE PARRY
         Texture texturaParry = new Texture(
             Gdx.files.internal(
                 "personajes/caballero_parry.png"
@@ -150,7 +161,33 @@ public class GameScreen implements Screen {
         caballero.setImagenParry(texturaParry);
         caballero.crear();
 
-        // Proyectiles.
+        // =====================================
+        // DOS ARQUEROS ENEMIGOS
+        // =====================================
+
+        // Ambos comparten la misma textura.
+        texturaArquero = new Texture(
+            Gdx.files.internal(
+                "personajes/arquero_enemigo.png"
+            )
+        );
+
+        arqueroEnemigo1 = new ArqueroEnemigo(
+            texturaArquero,
+            686f,
+            120f
+        );
+
+        arqueroEnemigo2 = new ArqueroEnemigo(
+            texturaArquero,
+            748f,
+            120f
+        );
+
+        // =====================================
+        // PROYECTILES
+        // =====================================
+
         Texture texturaFlecha = new Texture(
             Gdx.files.internal(
                 "proyectiles/flecha.png"
@@ -185,6 +222,13 @@ public class GameScreen implements Screen {
             musica
         );
 
+        // NUEVO: conectar los arqueros ANTES
+        // de crear el primer proyectil.
+        lluvia.setArqueros(
+            arqueroEnemigo1,
+            arqueroEnemigo2
+        );
+
         lluvia.crear();
     }
 
@@ -199,31 +243,30 @@ public class GameScreen implements Screen {
             gestorPartida.actualizarDescanso(delta);
 
             if (!gestorPartida.estaEnDescanso()) {
-
                 lluvia.reiniciarTiempoAparicion();
             }
 
         } else {
 
-            // Actualizar tiempo de supervivencia.
+            // ACTUALIZAR SUPERVIVENCIA
             if (gestorPartida.estaEnSupervivencia()) {
 
                 gestorPartida.actualizarSupervivencia(delta);
             }
 
-            // Actualizar proyectiles.
+            // ACTUALIZAR PROYECTILES
             boolean partidaActiva =
                 lluvia.actualizarMovimiento(
                     caballero,
                     castillo
                 );
 
-            // Actualizar record.
+            // ACTUALIZAR RECORD
             gestorPartida.actualizarRecord(
                 caballero.getPuntos()
             );
 
-            // Derrota.
+            // DERROTA
             if (!partidaActiva
                     || castillo.estaDestruido()) {
 
@@ -235,12 +278,12 @@ public class GameScreen implements Screen {
                 return;
             }
 
-            // Progreso de rondas.
+            // ACTUALIZAR RONDAS
             gestorPartida.actualizar(
                 caballero.getPuntos()
             );
 
-            // Victoria del tutorial.
+            // VICTORIA DEL TUTORIAL
             if (gestorPartida.hayVictoria()) {
 
                 int puntosFinales =
@@ -257,17 +300,21 @@ public class GameScreen implements Screen {
                 return;
             }
 
-            // Descanso entre rondas.
+            // DESCANSO ENTRE RONDAS
             if (gestorPartida.estaEnDescanso()) {
 
                 lluvia.limpiarProyectiles();
 
-                // Se conserva el valor de tu
-                // ultima version de GameScreen.
                 castillo.recuperarVida(4);
             }
         }
 
+        // NUEVO: actualizar las animaciones
+        // de ambos arqueros cada fotograma.
+        arqueroEnemigo1.actualizar(delta);
+        arqueroEnemigo2.actualizar(delta);
+
+        // LIMPIAR PANTALLA
         ScreenUtils.clear(0f, 0f, 0.2f, 1f);
 
         camera.update();
@@ -275,7 +322,7 @@ public class GameScreen implements Screen {
 
         batch.begin();
 
-        // Dibujar el escenario.
+        // DIBUJAR FONDO
         batch.draw(
             texturaFondo,
             0,
@@ -284,11 +331,15 @@ public class GameScreen implements Screen {
             480
         );
 
-        // Caballero y proyectiles.
+        // DIBUJAR LOS DOS ARQUEROS
+        arqueroEnemigo1.dibujar(batch);
+        arqueroEnemigo2.dibujar(batch);
+
+        // CABALLERO Y PROYECTILES
         caballero.dibujar(batch);
         lluvia.actualizarDibujoLluvia(batch);
 
-        // HUD principal.
+        // HUD PRINCIPAL
         font.setColor(Color.WHITE);
 
         font.draw(
@@ -313,7 +364,7 @@ public class GameScreen implements Screen {
             470
         );
 
-        // HUD de rondas o supervivencia.
+        // RONDAS O SUPERVIVENCIA
         if (gestorPartida.estaEnSupervivencia()) {
 
             font.setColor(Color.GOLD);
@@ -360,9 +411,8 @@ public class GameScreen implements Screen {
 
         dibujarHUDHabilidades();
 
-        // Mensaje del descanso.
+        // MENSAJE DE DESCANSO
         if (gestorPartida.estaEnDescanso()) {
-
             dibujarDescanso();
         }
 
@@ -372,7 +422,10 @@ public class GameScreen implements Screen {
     private void dibujarDescanso() {
 
         batch.setColor(
-            0f, 0f, 0f, 0.75f
+            0f,
+            0f,
+            0f,
+            0.75f
         );
 
         batch.draw(
@@ -401,8 +454,6 @@ public class GameScreen implements Screen {
 
         font.getData().setScale(1.1f);
 
-        // Mantener el texto consistente
-        // con la recuperacion actual.
         font.draw(
             batch,
             "Castillo: +4 vidas (maximo 5)",
@@ -480,7 +531,7 @@ public class GameScreen implements Screen {
             y + 15f
         );
 
-        // Fondo de barra.
+        // FONDO DE BARRA
         batch.setColor(COLOR_FONDO_BARRA);
 
         batch.draw(
@@ -491,7 +542,7 @@ public class GameScreen implements Screen {
             alto
         );
 
-        // Progreso de barra.
+        // PROGRESO DE BARRA
         batch.setColor(color);
 
         batch.draw(
@@ -557,8 +608,10 @@ public class GameScreen implements Screen {
         texturaBarra.dispose();
         fontHabilidades.dispose();
 
+        // Textura compartida por los dos arqueros.
+        texturaArquero.dispose();
+
         caballero.destruir();
         lluvia.destruir();
-
     }
 }

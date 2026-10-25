@@ -11,21 +11,28 @@ import com.badlogic.gdx.utils.TimeUtils;
 
 public class Lluvia {
 
-    // NUEVO ESCENARIO DE ASEDIO
+    // LIMITES DEL PATIO
     private static final float LIMITE_IZQUIERDO = 30f;
     private static final float LIMITE_DERECHO = 427f;
 
     private static final float ANCHO_PROYECTIL = 32f;
-
-    // Margen para mantener los ataques dentro del patio.
     private static final float MARGEN_SEGURIDAD = 12f;
 
+    // Posicion original para piedras y fuego.
     private static final float ALTURA_APARICION = 480f;
+
+    // SUELO DEL PATIO
+    private static final float ALTURA_SUELO = 120f;
+
+    // POSICIONES DE DISPARO DE LOS ARQUEROS
+    private static final float FLECHA_ARQUERO_1_X = 690f;
+    private static final float FLECHA_ARQUERO_2_X = 748f;
+
+    private static final float ALTURA_ARCO = 165f;
 
     private Array<Proyectil> proyectiles;
     private long ultimoProyectil;
 
-    // Posicion horizontal del ultimo proyectil generado.
     private float ultimaPosicionX = -1f;
 
     private Texture texturaFlecha;
@@ -34,6 +41,10 @@ public class Lluvia {
 
     private Sound sonidoBloqueo;
     private Music musica;
+
+    // ARQUEROS ENEMIGOS
+    private ArqueroEnemigo arqueroEnemigo1;
+    private ArqueroEnemigo arqueroEnemigo2;
 
     public Lluvia(
             Texture flecha,
@@ -45,8 +56,18 @@ public class Lluvia {
         this.texturaFlecha = flecha;
         this.texturaPiedra = piedra;
         this.texturaFuego = fuego;
+
         this.sonidoBloqueo = sonido;
         this.musica = musica;
+    }
+
+    // Conectar arqueros desde GameScreen.
+    public void setArqueros(
+            ArqueroEnemigo arquero1,
+            ArqueroEnemigo arquero2) {
+
+        this.arqueroEnemigo1 = arquero1;
+        this.arqueroEnemigo2 = arquero2;
     }
 
     public void crear() {
@@ -61,14 +82,14 @@ public class Lluvia {
         musica.play();
     }
 
-    // Intervalo configurado para la ronda actual.
+    // INTERVALO DE APARICION
     private float obtenerIntervaloAparicion() {
 
         return GestorPartida.getInstancia()
-                .getIntervaloAparicionActual();
+            .getIntervaloAparicionActual();
     }
 
-    // Elegir una posicion dentro del patio defendible.
+    // POSICION DE IMPACTO DENTRO DEL PATIO
     private float calcularPosicionX(
             ConfiguracionRonda configuracion) {
 
@@ -80,7 +101,6 @@ public class Lluvia {
             - ANCHO_PROYECTIL
             - MARGEN_SEGURIDAD;
 
-        // Primer proyectil: posicion aleatoria.
         if (ultimaPosicionX < 0f) {
 
             ultimaPosicionX = MathUtils.random(
@@ -91,7 +111,7 @@ public class Lluvia {
             return ultimaPosicionX;
         }
 
-        // Distancia maxima definida por Builder.
+        // Builder: distancia maxima entre ataques.
         float distancia =
             configuracion.getDistanciaMaxima();
 
@@ -105,7 +125,6 @@ public class Lluvia {
             ultimaPosicionX + distancia
         );
 
-        // Elegir dentro del rango alcanzable.
         float nuevaPosicion = MathUtils.random(
             minimo,
             maximo
@@ -116,7 +135,7 @@ public class Lluvia {
         return nuevaPosicion;
     }
 
-    // Seleccionar proyectil segun la ronda.
+    // SELECCIONAR TIPO DE PROYECTIL
     private int seleccionarTipoProyectil(int ronda) {
 
         int probabilidad = MathUtils.random(0, 99);
@@ -124,52 +143,91 @@ public class Lluvia {
         switch (ronda) {
 
             case 1:
-                // 100% flechas.
                 return 1;
 
             case 2:
-                // 65% flechas, 35% piedras.
                 return probabilidad < 65 ? 1 : 2;
 
             case 3:
-                // 45% flechas, 35% piedras, 20% fuego.
+
                 if (probabilidad < 45) {
                     return 1;
                 } else if (probabilidad < 80) {
                     return 2;
                 }
+
                 return 3;
 
             case 4:
-                // 35% flechas, 35% piedras, 30% fuego.
+
                 if (probabilidad < 35) {
                     return 1;
                 } else if (probabilidad < 70) {
                     return 2;
                 }
+
                 return 3;
 
             case 5:
             default:
-                // 30% flechas, 35% piedras, 35% fuego.
+
                 if (probabilidad < 30) {
                     return 1;
                 } else if (probabilidad < 65) {
                     return 2;
                 }
+
                 return 3;
         }
     }
 
-    // Generar proyectiles segun la ronda.
+    // SELECCIONAR ARQUERO Y ACTIVAR ANIMACION
+    private float seleccionarOrigenFlecha() {
+
+        // Si los arqueros no estan conectados,
+        // mantener un origen valido por defecto.
+        if (arqueroEnemigo1 == null
+                && arqueroEnemigo2 == null) {
+
+            return FLECHA_ARQUERO_1_X;
+        }
+
+        if (arqueroEnemigo1 == null) {
+
+            arqueroEnemigo2.disparar();
+            return FLECHA_ARQUERO_2_X;
+        }
+
+        if (arqueroEnemigo2 == null) {
+
+            arqueroEnemigo1.disparar();
+            return FLECHA_ARQUERO_1_X;
+        }
+
+        // Elegir aleatoriamente entre los dos.
+        if (MathUtils.randomBoolean()) {
+
+            arqueroEnemigo1.disparar();
+            return FLECHA_ARQUERO_1_X;
+
+        } else {
+
+            arqueroEnemigo2.disparar();
+            return FLECHA_ARQUERO_2_X;
+        }
+    }
+
+    // CREAR PROYECTIL
     private void crearProyectil() {
 
         ConfiguracionRonda configuracion =
             GestorPartida.getInstancia()
                 .getConfiguracionActual();
 
+        // Para flechas, esta sera la posicion
+        // de impacto. Para otros ataques,
+        // sigue siendo la posicion de aparicion.
         float x = calcularPosicionX(configuracion);
-        float y = ALTURA_APARICION;
 
         int tipo = seleccionarTipoProyectil(
             configuracion.getNumero()
@@ -177,66 +235,75 @@ public class Lluvia {
 
         Proyectil nuevo;
 
-        switch (tipo) {
+        if (tipo == 1) {
 
-            case 1:
-                nuevo = new Flecha(
-                    x,
-                    y,
-                    texturaFlecha
-                );
-                break;
+            // =================================
+            // FLECHA PARABOLICA DEL ARQUERO
+            // =================================
 
-            case 2:
-                nuevo = new Piedra(
-                    x,
-                    y,
-                    texturaPiedra
-                );
-                break;
+            // Elegir quien dispara.
+            float origenX = seleccionarOrigenFlecha();
 
-            default:
-                nuevo = new BolaFuego(
-                    x,
-                    y,
-                    texturaFuego
-                );
-                break;
-        }
+            float origenY = ALTURA_ARCO;
 
-        // STRATEGY: movimiento segun la ronda.
-        float probabilidadDiagonal =
-            configuracion.getProbabilidadDiagonal();
+            // La flecha debe tocar el suelo
+            // en la zona defendible.
+            float destinoX = x;
 
-        if (MathUtils.randomBoolean(
-                probabilidadDiagonal)) {
+            // Un poco por debajo de Y=120
+            // para asegurar la deteccion del suelo.
+            float destinoY = ALTURA_SUELO - 1f;
 
-            // Seleccionar direccion considerando
-            // el espacio disponible en el patio.
-            float centro =
-                (LIMITE_IZQUIERDO + LIMITE_DERECHO) / 2f;
+            nuevo = new Flecha(
+                origenX,
+                origenY,
+                texturaFlecha
+            );
 
-            float direccion;
-
-            if (x < centro) {
-
-                // Desde la izquierda, dirigir hacia el centro.
-                direccion = 1f;
-
-            } else {
-
-                // Desde la derecha, dirigir hacia el centro.
-                direccion = -1f;
-            }
-
+            // STRATEGY: nueva trayectoria.
             nuevo.setEstrategiaMovimiento(
-                new MovimientoDiagonal(direccion)
+                new MovimientoParabolicoArquero(
+                    origenX,
+                    origenY,
+                    destinoX,
+                    destinoY
+                )
+            );
+
+        } else if (tipo == 2) {
+
+            // =================================
+            // PIEDRAS: MOVIMIENTO ACTUAL
+            // =================================
+
+            nuevo = new Piedra(
+                x,
+                ALTURA_APARICION,
+                texturaPiedra
+            );
+
+            configurarMovimientoActual(
+                nuevo,
+                x,
+                configuracion
             );
 
         } else {
 
-            nuevo.setEstrategiaMovimiento(
-                new MovimientoVertical()
+            // =================================
+            // FUEGO: MOVIMIENTO ACTUAL
+            // =================================
+
+            nuevo = new BolaFuego(
+                x,
+                ALTURA_APARICION,
+                texturaFuego
+            );
+
+            configurarMovimientoActual(
+                nuevo,
+                x,
+                configuracion
             );
         }
 
@@ -245,7 +312,43 @@ public class Lluvia {
         ultimoProyectil = TimeUtils.nanoTime();
     }
 
-    // Actualizar proyectiles y colisiones.
+    // CONSERVAR ESTRATEGIAS DE PIEDRAS Y FUEGO
+    private void configurarMovimientoActual(
+            Proyectil proyectil,
+            float x,
+            ConfiguracionRonda configuracion) {
+
+        float probabilidadDiagonal =
+            configuracion.getProbabilidadDiagonal();
+
+        if (MathUtils.randomBoolean(
+                probabilidadDiagonal)) {
+
+            float centro =
+                (LIMITE_IZQUIERDO + LIMITE_DERECHO)
+                / 2f;
+
+            float direccion;
+
+            if (x < centro) {
+                direccion = 1f;
+            } else {
+                direccion = -1f;
+            }
+
+            proyectil.setEstrategiaMovimiento(
+                new MovimientoDiagonal(direccion)
+            );
+
+        } else {
+
+            proyectil.setEstrategiaMovimiento(
+                new MovimientoVertical()
+            );
+        }
+    }
+
+    // ACTUALIZAR PROYECTILES Y COLISIONES
     public boolean actualizarMovimiento(
             Caballero caballero,
             Castillo castillo) {
@@ -267,7 +370,7 @@ public class Lluvia {
 
             Proyectil proyectil = proyectiles.get(i);
 
-            // TEMPLATE METHOD.
+            // TEMPLATE METHOD
             boolean eliminar = proyectil.procesar(
                 delta,
                 caballero,
@@ -276,7 +379,7 @@ public class Lluvia {
 
             if (eliminar) {
 
-                // Sonido solo al bloquear.
+                // Sonido cuando el caballero bloquea.
                 if (proyectil.colisionaCon(
                         caballero.getArea())) {
 
@@ -291,24 +394,26 @@ public class Lluvia {
         return !castillo.estaDestruido();
     }
 
-    // Dibujar proyectiles.
+    // DIBUJAR PROYECTILES
     public void actualizarDibujoLluvia(
             SpriteBatch batch) {
 
         for (Proyectil proyectil : proyectiles) {
+
             proyectil.dibujar(batch);
         }
     }
 
-    // Limpiar proyectiles durante descansos.
+    // LIMPIAR PROYECTILES
     public void limpiarProyectiles() {
 
         if (proyectiles != null) {
+
             proyectiles.clear();
         }
     }
 
-    // Reiniciar tiempo al comenzar otra ronda.
+    // REINICIAR TIEMPO DE APARICION
     public void reiniciarTiempoAparicion() {
 
         ultimoProyectil = TimeUtils.nanoTime();
@@ -317,10 +422,12 @@ public class Lluvia {
     }
 
     public void pausar() {
+
         musica.pause();
     }
 
     public void continuar() {
+
         musica.play();
     }
 

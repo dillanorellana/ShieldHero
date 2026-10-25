@@ -1,3 +1,4 @@
+
 package com.shieldhero.game;
 
 import com.badlogic.gdx.graphics.Texture;
@@ -6,10 +7,7 @@ import com.badlogic.gdx.math.Rectangle;
 
 public abstract class Proyectil {
 
-    // Altura del suelo del nuevo escenario.
     private static final float ALTURA_SUELO = 120f;
-
-    // Dimension visual y de colision de proyectiles.
     private static final float TAMANO_PROYECTIL = 32f;
 
     private Rectangle area;
@@ -37,37 +35,30 @@ public abstract class Proyectil {
         this.velocidad = velocidad;
         this.daño = daño;
 
-        // Movimiento vertical por defecto.
         this.estrategiaMovimiento =
             new MovimientoVertical();
     }
 
     // TEMPLATE METHOD
-    // Define el orden de procesamiento de cada proyectil.
-    // Devuelve true cuando debe eliminarse.
     public final boolean procesar(
             float delta,
             Caballero caballero,
             Castillo castillo) {
 
-        // 1. Actualizar posicion con Strategy.
         actualizar(delta);
 
-        // 2. Comprobar bloqueo del caballero.
         if (colisionaCon(caballero.getArea())) {
 
             alBloquear(caballero);
             return true;
         }
 
-        // 3. Comprobar impacto en el suelo.
         if (llegoAlSuelo()) {
 
             alImpactar(castillo);
             return true;
         }
 
-        // 4. El proyectil sigue activo.
         return false;
     }
 
@@ -80,7 +71,6 @@ public abstract class Proyectil {
         );
     }
 
-    // Metodos personalizables por las subclases.
     protected abstract void alBloquear(
         Caballero caballero
     );
@@ -99,6 +89,7 @@ public abstract class Proyectil {
         }
     }
 
+    // Dibujado normal, sin rotacion.
     public void dibujar(SpriteBatch batch) {
 
         batch.draw(
@@ -110,12 +101,36 @@ public abstract class Proyectil {
         );
     }
 
+    // NUEVO: dibujar con rotacion.
+    protected void dibujarRotado(
+            SpriteBatch batch,
+            float angulo) {
+
+        batch.draw(
+            textura,
+            area.x,
+            area.y,
+            area.width / 2f,
+            area.height / 2f,
+            area.width,
+            area.height,
+            1f,
+            1f,
+            angulo,
+            0,
+            0,
+            textura.getWidth(),
+            textura.getHeight(),
+            false,
+            false
+        );
+    }
+
     public boolean colisionaCon(Rectangle otraArea) {
 
         return area.overlaps(otraArea);
     }
 
-    // La parte inferior del proyectil toca el suelo.
     public boolean llegoAlSuelo() {
 
         return area.y <= ALTURA_SUELO;
