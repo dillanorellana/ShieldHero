@@ -10,7 +10,6 @@ buildscript {
   }
   dependencies {
 
-
   }
 }
 
@@ -18,7 +17,6 @@ allprojects {
   apply plugin: 'eclipse'
   apply plugin: 'idea'
 
-  // This allows you to "Build and run using IntelliJ IDEA", an option in IDEA's Settings.
   idea {
     module {
       outputDir file('build/classes/java/main')
@@ -29,26 +27,37 @@ allprojects {
 
 configure(subprojects) {
   apply plugin: 'java-library'
-  sourceCompatibility = 11
 
-  // From https://lyze.dev/2021/04/29/libGDX-Internal-Assets-List/
-  // The article can be helpful when using assets.txt in your project.
+  // Shield Hero utiliza exclusivamente Java 11
+  sourceCompatibility = 11
+  targetCompatibility = 11
+
+  java {
+    toolchain {
+      languageVersion = JavaLanguageVersion.of(11)
+    }
+  }
+
+  tasks.withType(JavaCompile).configureEach {
+    options.release.set(11)
+  }
+
+  // Genera la lista de recursos de LibGDX
   tasks.register('generateAssetList') {
     inputs.dir("${project.rootDir}/assets/")
-    // projectFolder/assets
+
     File assetsFolder = new File("${project.rootDir}/assets/")
-    // projectFolder/assets/assets.txt
     File assetsFile = new File(assetsFolder, "assets.txt")
-    // delete that file in case we've already created it
+
     assetsFile.delete()
 
-    // iterate through all files inside that folder
-    // convert it to a relative path
-    // and append it to the file assets.txt
-    fileTree(assetsFolder).collect { assetsFolder.relativePath(it) }.each {
+    fileTree(assetsFolder).collect {
+      assetsFolder.relativePath(it)
+    }.each {
       assetsFile.append(it + "\n")
     }
   }
+
   processResources.dependsOn 'generateAssetList'
 
   compileJava {
@@ -59,10 +68,10 @@ configure(subprojects) {
 subprojects {
   version = '$projectVersion'
   ext.appName = 'ShieldHero'
+
   repositories {
     mavenCentral()
     maven { url 'https://s01.oss.sonatype.org' }
-    // You may want to remove the following line if you have errors downloading dependencies.
     mavenLocal()
     maven { url 'https://oss.sonatype.org/content/repositories/snapshots/' }
     maven { url 'https://s01.oss.sonatype.org/content/repositories/snapshots/' }
