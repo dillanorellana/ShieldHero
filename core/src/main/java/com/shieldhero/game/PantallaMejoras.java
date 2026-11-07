@@ -1,4 +1,3 @@
-
 package com.shieldhero.game;
 
 import java.util.function.Consumer;
@@ -26,14 +25,12 @@ public class PantallaMejoras implements Screen {
         GUARDIAN_EXTRA
     }
 
-    private final ShieldHeroGame game;
     private final Consumer<TipoMejora> alElegir;
     private final boolean especial;
     private final int numeroRonda;
 
     private final OrthographicCamera camera;
     private final SpriteBatch batch;
-    private final BitmapFont font;
     private final BitmapFont fuenteGrande;
 
     private Texture pixel;
@@ -62,13 +59,11 @@ public class PantallaMejoras implements Screen {
             int numeroRonda,
             Consumer<TipoMejora> alElegir) {
 
-        this.game = game;
         this.especial = especial;
         this.numeroRonda = numeroRonda;
         this.alElegir = alElegir;
 
         batch = game.getBatch();
-        font = game.getFont();
         fuenteGrande = new BitmapFont();
 
         camera = new OrthographicCamera();
@@ -77,6 +72,7 @@ public class PantallaMejoras implements Screen {
         Pixmap pixmap = new Pixmap(
             1, 1, Pixmap.Format.RGBA8888
         );
+
         pixmap.setColor(Color.WHITE);
         pixmap.fill();
 
