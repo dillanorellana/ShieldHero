@@ -3,9 +3,6 @@ package com.shieldhero.game;
 
 public class GestorPartida {
 
-    private static final GestorPartida instancia =
-        new GestorPartida();
-
     private static final float DURACION_DESCANSO = 4f;
     private static final float DURACION_RONDA = 30f;
 
@@ -38,6 +35,16 @@ public class GestorPartida {
 
     private boolean jefePendiente;
     private boolean jefeActivo;
+
+    /*
+     * Clase interna para aplicar Lazy Initialization.
+     * La instancia se crea solamente cuando se llama
+     * por primera vez a getInstancia().
+     */
+    private static class InstanciaHolder {
+        private static final GestorPartida INSTANCIA =
+            new GestorPartida();
+    }
 
     private GestorPartida() {
 
@@ -94,7 +101,7 @@ public class GestorPartida {
     }
 
     public static GestorPartida getInstancia() {
-        return instancia;
+        return InstanciaHolder.INSTANCIA;
     }
 
     public void actualizarRecord(int puntos) {
