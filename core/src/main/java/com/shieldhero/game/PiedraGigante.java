@@ -6,7 +6,7 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Rectangle;
 
-public class PiedraGigante implements Bloqueable {
+public class PiedraGigante {
 
     private static final float ANCHO = 42f;
     private static final float ALTO = 42f;
@@ -93,9 +93,11 @@ public class PiedraGigante implements Bloqueable {
         tiempoActual += Math.max(0f, delta);
 
         if (estado == Estado.VOLANDO) {
+
             actualizarIda(caballero);
 
         } else if (estado == Estado.DEVUELTA) {
+
             actualizarVuelta();
         }
 
@@ -132,8 +134,21 @@ public class PiedraGigante implements Bloqueable {
 
         if (area.overlaps(caballero.getArea())) {
 
-            // Utilizamos la interfaz Bloqueable.
-        	SistemaBloqueo.procesarBloqueo(this, caballero);
+            if (caballero.estaEnParry()) {
+
+                devolverAlGigante();
+
+            } else {
+
+                caballero.aplicarRalentizacion();
+
+                System.out.println(
+                    "PIEDRA GIGANTE: CABALLERO RALENTIZADO"
+                );
+
+                terminar();
+            }
+
             return;
         }
 
@@ -147,28 +162,6 @@ public class PiedraGigante implements Bloqueable {
                     "PIEDRA GIGANTE CAYO EN EL PATIO"
                 );
             }
-
-            terminar();
-        }
-    }
-
-    // INTERFAZ BLOQUEABLE
-    // Comportamiento distinto al de los
-    // proyectiles normales.
-    @Override
-    public void alSerBloqueado(Caballero caballero) {
-
-        if (caballero.estaEnParry()) {
-
-            devolverAlGigante();
-
-        } else {
-
-            caballero.aplicarRalentizacion();
-
-            System.out.println(
-                "PIEDRA GIGANTE: CABALLERO RALENTIZADO"
-            );
 
             terminar();
         }

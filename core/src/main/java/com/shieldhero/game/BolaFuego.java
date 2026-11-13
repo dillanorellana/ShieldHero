@@ -1,11 +1,8 @@
-
 package com.shieldhero.game;
 
 import com.badlogic.gdx.graphics.Texture;
 
 public class BolaFuego extends Proyectil implements Bloqueable {
-
-    private static final int PUNTOS_BLOQUEO = 30;
 
     public BolaFuego(float x, float y, Texture textura) {
         super(x, y, textura, 380, 2);
@@ -13,23 +10,21 @@ public class BolaFuego extends Proyectil implements Bloqueable {
 
     @Override
     public int getPuntosBloqueo() {
-        return PUNTOS_BLOQUEO;
+        return 30;
     }
 
-    // INTERFAZ BLOQUEABLE
     @Override
     public void alSerBloqueado(Caballero caballero) {
         caballero.sumarPuntosBloqueo(getPuntosBloqueo());
     }
 
-    // TEMPLATE METHOD
-
+    // Template Method: accion cuando se bloquea
     @Override
     protected void alBloquear(Caballero caballero) {
-    	SistemaBloqueo.procesarBloqueo(this, caballero);
+        alSerBloqueado(caballero);
     }
 
-
+    // Template Method: accion cuando impacta
     @Override
     protected void alImpactar(Castillo castillo) {
         castillo.recibirDaño(getDaño());
